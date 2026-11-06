@@ -1,0 +1,32 @@
+{
+  "name": "trey-workspace",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Trey for Windows — Intelligent Focus Companion by The Nomin Company",
+  "author": "The Nomin Company (Chirag S)",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm --workspace=@bluey/desktop run dev",
+    "build": "npm run build --workspaces",
+    "test": "npm --workspace=@bluey/core run test",
+    "typecheck": "npm run typecheck --workspaces",
+    "lint": "eslint .",
+    "package": "npm --workspace=@bluey/desktop run package",
+    "installer": "npm --workspace=@bluey/desktop run installer"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.14.0",
+    "eslint": "^9.14.0",
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.14.0"
+  },
+  "allowScripts": {
+    "electron@33.4.11": true,
+    "esbuild@0.21.5": true,
+    "uiohook-napi@1.5.5": true,
+    "electron-winstaller@5.4.0": true
+  }
+}

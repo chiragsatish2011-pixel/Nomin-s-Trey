@@ -1,0 +1,30 @@
+appId: co.visionairy.trey
+productName: Trey
+electronVersion: 33.4.11
+npmRebuild: false
+publish:
+  provider: github
+  owner: chiragsatish2011-pixel
+  repo: Nomin-s-Trey
+  releaseType: release
+directories:
+  output: dist
+  buildResources: build
+files:
+  - out/**/*
+  - package.json
+asarUnpack:
+  - "**/*.node"
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: resources/icon.png
+nsis:
+  artifactName: ${productName}-Setup-${version}.${ext}
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: Trey

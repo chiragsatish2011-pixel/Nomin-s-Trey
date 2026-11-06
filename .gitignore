@@ -8,3 +8,16 @@ xcuserdata/
 Secrets.xcconfig
 *.env
 .env*
+
+
+# Node / Electron / Monorepo
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+out/
+**/out/
+*.tsbuildinfo
+.eslintcache
+*.log
+builder-debug.yml
