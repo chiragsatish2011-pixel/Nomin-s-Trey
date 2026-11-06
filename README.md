@@ -63,3 +63,27 @@ The original Swift reference implementation (`Mac/`, `iOS/`, `Shared/`, `Tests/`
 ### License
 
 Public domain under [the Unlicense](LICENSE).
+
+<div align="center" style="padding: 24px 12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+  
+  <h2 style="font-size: 24px; font-weight: 700; border-bottom: none; margin-bottom: 4px;">
+    Get Trey for Windows
+  </h2>
+  
+  <p style="font-size: 14px; color: #8b949e; margin-bottom: 20px;">
+    The Intelligent Focus Companion · Built by The Nomin Company
+  </p>
+
+  <a href="https://github.com" rel="nofollow" style="display: inline-flex; align-items: center; gap: 10px; padding: 12px 28px; border-radius: 40px; background: linear-gradient(135deg, #6C86F5 0%, #3B82F6 100%); color: #ffffff !important; font-size: 15px; font-weight: 700; text-decoration: none; box-shadow: 0 6px 20px rgba(59, 130, 246, 0.3);">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 4px;">
+      <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/>
+    </svg>
+    <span>Download for Windows (64-bit)</span>
+  </a>
+
+  <div style="margin-top: 14px; font-size: 11px; color: #8b949e;">
+    Compatible with Windows 10 & 11 · Free & Open Source · Version 0.2.0
+  </div>
+
+</div>
+
