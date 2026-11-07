@@ -289,4 +289,74 @@ describe('AgentLoop Stop Conditions & Safety with Mocked Model', () => {
     expect(result.summary).toContain('User cancelled potentially sensitive action')
     expect(mockInput.typeText).not.toHaveBeenCalled()
   })
-})
+
+  it('autonomously executes full Chrome, YouTube, and Technoblade search flow', async () => {
+    const { mockClient, mockGovernor, mockCapture, mockInput } = createMocks()
+    const loop = new AgentLoop(mockClient, mockGovernor, mockCapture, mockInput)
+
+    const plannedSteps = [
+      {
+        thought: 'Clicking Google Chrome shortcut on desktop to launch browser',
+        action: { type: 'click', x: 280, y: 320, button: 'left' }
+      },
+      {
+        thought: 'Navigating to YouTube in Chrome address bar',
+        action: { type: 'type', text: 'https://www.youtube.com' }
+      },
+      {
+        thought: 'Pressing Enter to load YouTube',
+        action: { type: 'key', key: 'Enter' }
+      },
+      {
+        thought: 'Clicking YouTube search bar',
+        action: { type: 'click', x: 620, y: 168, button: 'left' }
+      },
+      {
+        thought: 'Typing technoblade into search bar',
+        action: { type: 'type', text: 'technoblade' }
+      },
+      {
+        thought: 'Pressing Enter to execute search',
+        action: { type: 'key', key: 'Enter' }
+      },
+      {
+        thought: 'Technoblade channel and Potato War videos verified on screen',
+        action: { type: 'done', summary: 'Successfully opened Chrome, navigated to YouTube, and searched Technoblade.' }
+      }
+    ]
+
+    let stepIndex = 0
+    ;(mockClient.complete as ReturnType<typeof vi.fn>).mockImplementation(async () => {
+      const step = plannedSteps[stepIndex++]
+      return {
+        text: JSON.stringify(step),
+        modelUsed: 'mock-model'
+      }
+    })
+
+    const animatedCursorEvents: Array<{ x: number; y: number; actionType: string }> = []
+    const stepProgressEvents: string[] = []
+
+    const result = await loop.run({
+      task: 'open chrome and open youtube and search technoblade',
+      maxSteps: 10,
+      display: { x: 0, y: 0, width: 1920, height: 1080, scaleFactor: 1 },
+      onAnimateCursor: (x, y, actionType) => {
+        animatedCursorEvents.push({ x, y, actionType })
+      },
+      onStepProgress: (_s, _max, thought) => {
+        stepProgressEvents.push(thought)
+      }
+    })
+
+    expect(result.success).toBe(true)
+    expect(result.stepsExecuted).toBe(7)
+    expect(result.summary).toBe('Successfully opened Chrome, navigated to YouTube, and searched Technoblade.')
+    expect(mockInput.click).toHaveBeenCalledTimes(2)
+    expect(mockInput.typeText).toHaveBeenCalledWith('https://www.youtube.com')
+    expect(mockInput.typeText).toHaveBeenCalledWith('technoblade')
+    expect(mockInput.pressKey).toHaveBeenCalledWith('Enter', undefined)
+    expect(animatedCursorEvents.length).toBe(2)
+    expect(stepProgressEvents.length).toBe(7)
+  })
+});
