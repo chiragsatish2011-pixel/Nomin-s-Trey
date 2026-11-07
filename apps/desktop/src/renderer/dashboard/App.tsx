@@ -18,6 +18,7 @@ import {
   CheckCircleIcon,
   InfoIcon
 } from '../components/Icons'
+import { tokens } from '../tokens'
 import { PairingSheet } from './PairingSheet'
 
 interface CheckItem {
@@ -542,7 +543,7 @@ export default function App(): React.JSX.Element {
         inset: 0,
         background: '#000000',
         color: '#FFFFFF',
-        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Rounded", "SF Pro Display", sans-serif',
+        fontFamily: tokens.font.family,
         userSelect: 'none',
         overflow: 'hidden',
         display: 'flex',

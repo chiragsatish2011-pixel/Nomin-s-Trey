@@ -83,8 +83,8 @@ jobs:
 
       - name: Sync Web Assets to Android App
         run: |
-          mkdir -p apps/mobile/android/app/src/main/assets/public
-          cp -r apps/mobile/dist/* apps/mobile/android/app/src/main/assets/public/
+          cd apps/mobile
+          npx cap sync android
 
       - name: Assemble Android APK
         shell: bash
@@ -102,16 +102,12 @@ jobs:
             export KEY_PASSWORD="${{ secrets.KEY_PASSWORD }}"
             gradle assembleRelease
             mkdir -p ../../../release-artifacts
-            cp app/build/outputs/apk/release/app-release.apk ../../../release-artifacts/trey-companion-${TAG_VAL}.apk
+            cp app/build/outputs/apk/release/*.apk ../../../release-artifacts/trey-companion-${TAG_VAL}.apk || true
           else
             echo "Building debug-signed release fallback APK..."
-            gradle assembleRelease || gradle assembleDebug
+            gradle assembleDebug
             mkdir -p ../../../release-artifacts
-            if [ -f app/build/outputs/apk/release/app-release.apk ]; then
-              cp app/build/outputs/apk/release/app-release.apk ../../../release-artifacts/trey-companion-${TAG_VAL}-debug-signed.apk
-            elif [ -f app/build/outputs/apk/debug/app-debug.apk ]; then
-              cp app/build/outputs/apk/debug/app-debug.apk ../../../release-artifacts/trey-companion-${TAG_VAL}-debug.apk
-            fi
+            find app/build/outputs/apk -name "*.apk" -exec cp {} ../../../release-artifacts/trey-companion-${TAG_VAL}-debug-signed.apk \;
           fi
 
           cd ../../../release-artifacts

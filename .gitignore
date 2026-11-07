@@ -28,3 +28,9 @@ reference/
 *.p12
 release-artifacts/
 release-dist/
+
+apps/mobile/android/app/capacitor.build.gradle
+apps/mobile/android/capacitor.settings.gradle
+apps/mobile/android/capacitor-cordova-android-plugins/
+apps/mobile/android/app/src/main/assets/
+apps/mobile/android/app/src/main/res/

@@ -15,3 +15,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "trey-android"
 include ':app'
+apply from: 'capacitor.settings.gradle'
