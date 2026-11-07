@@ -2,6 +2,15 @@ import { app } from 'electron'
 import { join } from 'path'
 import { existsSync, readFileSync, writeFileSync, mkdirSync, copyFileSync } from 'fs'
 
+export interface PairedDeviceRecord {
+  id: string
+  name: string
+  fingerprint: string
+  secretBase64: string
+  pairedAt: number
+  revoked: boolean
+}
+
 export interface AppSettings {
   facePosition?: { x: number; y: number }
   faceSize?: { width: number; height: number }
@@ -19,6 +28,7 @@ export interface AppSettings {
   hotkeyVoice: string
   autoStartOnLogin?: boolean
   startMinimizedToTray?: boolean
+  pairedDevices?: PairedDeviceRecord[]
 }
 
 const defaultSettings: AppSettings = {

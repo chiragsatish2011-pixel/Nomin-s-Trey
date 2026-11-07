@@ -15,6 +15,7 @@ export interface PlatformCapabilities {
   canOverlay: boolean
   canSecureStore: boolean
   canStoreHistory: boolean
+  canAutomateInput: boolean
 }
 
 export const WINDOWS_CAPABILITIES: PlatformCapabilities = {
@@ -26,7 +27,8 @@ export const WINDOWS_CAPABILITIES: PlatformCapabilities = {
   canPushToTalk: true,
   canOverlay: true,
   canSecureStore: true,
-  canStoreHistory: true
+  canStoreHistory: true,
+  canAutomateInput: true
 }
 
 export const LINUX_CAPABILITIES: PlatformCapabilities = {
@@ -38,7 +40,8 @@ export const LINUX_CAPABILITIES: PlatformCapabilities = {
   canPushToTalk: false,
   canOverlay: false,
   canSecureStore: false,
-  canStoreHistory: false
+  canStoreHistory: false,
+  canAutomateInput: false
 }
 
 export const ANDROID_CAPABILITIES: PlatformCapabilities = {
@@ -50,5 +53,6 @@ export const ANDROID_CAPABILITIES: PlatformCapabilities = {
   canPushToTalk: false,
   canOverlay: false,
   canSecureStore: false,
-  canStoreHistory: false
+  canStoreHistory: false,
+  canAutomateInput: false
 }

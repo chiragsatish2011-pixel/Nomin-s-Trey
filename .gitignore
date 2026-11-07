@@ -21,3 +21,10 @@ out/
 .eslintcache
 *.log
 builder-debug.yml
+reference/
+*.keystore
+*.jks
+*.p8
+*.p12
+release-artifacts/
+release-dist/

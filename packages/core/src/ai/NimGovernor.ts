@@ -1,4 +1,4 @@
-export type JobPriority = 'voice' | 'research' | 'nudge_wording' | 'classification' | 'model_refresh'
+export type JobPriority = 'voice' | 'research' | 'nudge_wording' | 'classification' | 'model_refresh' | 'pc_takeover_step'
 
 export interface GovernorStatus {
   state: 'ok' | 'cooling_down' | 'circuit_open'
@@ -20,10 +20,11 @@ interface QueuedJob<T> {
 
 const PRIORITY_LEVELS: Record<JobPriority, number> = {
   voice: 1,
-  research: 2,
-  nudge_wording: 3,
-  classification: 4,
-  model_refresh: 5
+  pc_takeover_step: 2,
+  research: 3,
+  nudge_wording: 4,
+  classification: 5,
+  model_refresh: 6
 }
 
 export class NimGovernor {

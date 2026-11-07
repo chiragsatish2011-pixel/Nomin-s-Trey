@@ -18,11 +18,16 @@
   },
   "dependencies": {
     "@nomin/core": "*",
+    "@nomin/protocol": "*",
+    "@types/qrcode": "^1.5.6",
+    "@types/ws": "^8.18.2",
     "electron-updater": "^6.8.11",
+    "qrcode": "^1.5.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "tesseract.js": "^7.0.0",
-    "uiohook-napi": "^1.5.5"
+    "uiohook-napi": "^1.5.5",
+    "ws": "^8.22.1"
   },
   "devDependencies": {
     "@electron-toolkit/utils": "^3.0.0",

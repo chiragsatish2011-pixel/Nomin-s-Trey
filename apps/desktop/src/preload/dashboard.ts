@@ -36,6 +36,15 @@ export interface DashboardAPI {
   queryResearch: (question: string) => Promise<unknown>
   minimizeWindow: () => Promise<void>
   closeWindow: () => Promise<void>
+  startTakeover: (task: string) => Promise<{ success: boolean; summary: string }>
+  stopTakeover: () => Promise<void>
+  isTakeoverActive: () => Promise<boolean>
+  onTakeoverStatus: (callback: (status: unknown) => void) => () => void
+  startPairing: () => Promise<{ record: unknown; qrText: string; fingerprint: string; expiresAt: number }>
+  getPairedDevices: () => Promise<unknown[]>
+  revokeDevice: (id: string) => Promise<boolean>
+  getCompanionStatus: () => Promise<{ port: number; clientCount: number; clientNames: string[] }>
+  onCompanionStatus: (callback: (status: { count: number; names: string[] }) => void) => () => void
 }
 
 const dashboardAPI: DashboardAPI = {
@@ -84,7 +93,28 @@ const dashboardAPI: DashboardAPI = {
   isFloatingBuddyVisible: () => ipcRenderer.invoke('window:isFloatingBuddyVisible'),
   queryResearch: (question) => ipcRenderer.invoke('research:query', question),
   minimizeWindow: () => ipcRenderer.invoke('window:minimize'),
-  closeWindow: () => ipcRenderer.invoke('window:close')
+  closeWindow: () => ipcRenderer.invoke('window:close'),
+  startTakeover: (task: string) => ipcRenderer.invoke('agent:startTakeover', task),
+  stopTakeover: () => ipcRenderer.invoke('agent:stopTakeover'),
+  isTakeoverActive: () => ipcRenderer.invoke('agent:isTakeoverActive'),
+  onTakeoverStatus: (callback: (status: unknown) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, status: unknown) => callback(status)
+    ipcRenderer.on('overlay:takeoverStatus', handler)
+    return () => {
+      ipcRenderer.removeListener('overlay:takeoverStatus', handler)
+    }
+  },
+  startPairing: () => ipcRenderer.invoke('pairing:startSession'),
+  getPairedDevices: () => ipcRenderer.invoke('pairing:getPairedDevices'),
+  revokeDevice: (id: string) => ipcRenderer.invoke('pairing:revokeDevice', id),
+  getCompanionStatus: () => ipcRenderer.invoke('pairing:getStatus'),
+  onCompanionStatus: (callback: (status: { count: number; names: string[] }) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, status: { count: number; names: string[] }) => callback(status)
+    ipcRenderer.on('companion:status', handler)
+    return () => {
+      ipcRenderer.removeListener('companion:status', handler)
+    }
+  }
 }
 
 contextBridge.exposeInMainWorld('dashboardAPI', dashboardAPI)

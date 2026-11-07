@@ -161,10 +161,12 @@ export function createFaceWindow(): BrowserWindow {
   })
 
   // Prevent window from appearing in screen captures
-  try {
-    win.setContentProtection(true)
-  } catch {
-    // Fallback
+  if (process.env.TREY_ALLOW_SCREEN_RECORDING !== '1') {
+    try {
+      win.setContentProtection(true)
+    } catch {
+      // Fallback
+    }
   }
 
   // Save position on move across restarts
@@ -231,10 +233,12 @@ export function createOverlayWindow(): BrowserWindow {
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
   win.setIgnoreMouseEvents(true, { forward: true })
 
-  try {
-    win.setContentProtection(true)
-  } catch {
-    // Handled
+  if (process.env.TREY_ALLOW_SCREEN_RECORDING !== '1') {
+    try {
+      win.setContentProtection(true)
+    } catch {
+      // Handled
+    }
   }
 
   win.on('ready-to-show', () => {

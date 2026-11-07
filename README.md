@@ -1,95 +1,111 @@
 # Trey by Nomin
 
-**Created & Owned by Nomin**  
-**Founder:** Chirag S  
+**Product:** Trey by Chirag S / The Nomin Company (`com.nomin.trey`)  
+**Creator & Lead Engineer:** Chirag S  
+**Organization:** Nomin / The Nomin Company  
+**Copyright:** Copyright (c) 2026 Nomin / Chirag S  
 **Repository:** [Nomin-s-Trey](https://github.com/chiragsatish2011-pixel/Nomin-s-Trey.git)  
 
-Trey is an ultra-intelligent, friendly desktop focus companion built for focused knowledge workers worldwide. Trey sits on your desktop watching your cursor with fluid spring physics, inspects your screen against declared focus goals, executes agentic computer actions (app control, process termination, web research), and gently nudges you with cinematic takeover spotlights when you drift.
+Trey is an intelligent desktop focus companion and mobile copilot. Trey sits on your desktop watching your cursor with fluid spring physics, inspects your screen against declared focus goals, executes agentic computer actions, and gently nudges you with cinematic takeover spotlights when you drift. With the Android Companion app, Trey travels with you: monitor tasks on the go, issue voice or text instructions, trigger an emergency STOP from across the room, or run Trey in standalone mode as a personal focus buddy powered directly by NVIDIA NIM.
 
 ---
 
-## Key Features
+## Downloads
 
-- **Universal Multi-Model Engine:** Works out-of-the-box with *any* API key (NVIDIA NIM, OpenAI, OpenRouter, Groq, or custom endpoints). Automatically audits available models and selects the optimal vision and reasoning pipeline.
-- **Push-to-Talk Voice & Emergency Hotkeys:** Hold **J** (or `Ctrl+J` / `Alt+J`) to speak directly to Trey; press **K** (or `Ctrl+K` / `Alt+K`) for instantaneous emergency pause and resume.
-- **Cinematic Screen Takeover & Glowing Spotlights:** Dynamic neon laser beam and pulsing corner crosshairs that pinpoint distraction sources and screen elements with fluid motion.
-- **Agentic Computer Control:** Close or terminate distracting applications (*"close Chrome"*, *"quit Spotify"*, *"kill Discord"*) and launch tools on command.
-- **Apple Glass Aesthetic:** Precision-crafted floating glass cards with zero mascot overlap, 76px SF Pro countdown timer, and interactive timeline history.
-- **Privacy First:** Zero screenshot or audio disk writes. Memory-only processing with Windows DPAPI encryption.
+Download the latest official releases for Windows and Android from the [GitHub Releases Page](https://github.com/chiragsatish2011-pixel/Nomin-s-Trey/releases):
 
----
+- **Windows Desktop:** `Trey-Setup-0.2.0.exe` (Windows 10 / 11 64-bit installer)
+- **Android Companion App:** `trey-companion-v0.2.0.apk` (Android 8.0+ / API 24+)
+- **Verification:** Checksums published in `SHA256SUMS.txt`
 
-## Windows Releases and Updates
-
-The Windows app uses Electron's NSIS updater pointing to `chiragsatish2011-pixel/Nomin-s-Trey`. On launch it checks the GitHub releases feed, asks before downloading a newer version, and asks again before restarting to install it. The tray menu also includes **Check for Updates…**.
-
-To publish a Windows update, increment `apps/desktop/package.json` and run `npm --workspace=@nomin/desktop run release` with a GitHub token for `chiragsatish2011-pixel/Nomin-s-Trey`. The release must be public and include the generated `Trey-Setup-<version>.exe`, its `.blockmap`, and `latest.yml`.
+### Android Installation Steps
+1. Download `trey-companion-v0.2.0.apk` onto your Android phone.
+2. Open the downloaded file. When prompted by Android, tap **Settings** and toggle **"Allow installation from this source"**.
+3. Tap **Install** to complete the installation.
 
 ---
 
-## Windows / PC Edition (Electron + TypeScript)
+## Operating Modes
 
-Requires Node.js 20+ and npm:
+Trey supports two operational modes seamlessly in a single app:
+
+### Mode A: Companion Mode (Paired with PC)
+- **Character & Mood Sync:** Trey's face, gaze vector, blinks, and mood (`curious`, `happy`, `focused`, `sleepy`, `alert`) mirror the desktop session in real time with sub-100ms latency.
+- **Remote Task Delegation:** Speak or type focus tasks directly into your phone; they are securely relayed to the desktop engine.
+- **Live Timeline & Step Feed:** Watch desktop focus checks, vision observations, and computer actions stream live.
+- **Big Red Emergency STOP:** A prominent 64dp red STOP button instantly preempts desktop computer control, aborts agent loops, and pauses the session.
+- **Freshness Sentinel:** Warns immediately if the connection to the PC drops for more than 5 seconds, and automatically reconnects with exponential backoff.
+
+### Mode B: Standalone Mode (No PC Required)
+- **100% Autonomous Focus Buddy:** Operates independently without a PC.
+- **NVIDIA NIM Integration:** Directly queries NVIDIA NIM (`https://integrate.api.nvidia.com/v1`) using a user-supplied API key securely stored in the Android Keystore / EncryptedSharedPreferences.
+- **Single-Source-of-Truth Countdown Timer:** Wall-clock based monotonic timer that never drifts or skips seconds.
+- **Cartoon Voice Synthesizer:** Offline procedural pentatonic chirps (C5..E6) with zero disk footprint.
+- **Device Control (Opt-In):** System-level accessibility control is disabled by default and requires explicit opt-in.
+
+---
+
+## Pairing Guide
+
+Pairing between your PC and Android phone is end-to-end encrypted and takes under 10 seconds:
+
+1. **Open Desktop Dashboard:** Launch Trey on Windows. Open the Dashboard window and click **"Pair Phone"** in the sidebar.
+2. **Scan the QR Code:** Desktop displays an ephemeral QR code encoding a one-time 256-bit cryptographically random secret (expires in 5 minutes and consumed upon first use).
+3. **Mutual Handshake:** Open Trey on Android, tap the camera icon, and point your camera at the QR code (or paste the code manually).
+4. **Encrypted Session:** Both devices exchange cryptographic proofs via HMAC-SHA256 and derive directional session keys (`trey-companion-desktop-to-mobile` and `trey-companion-mobile-to-desktop`) via HKDF-SHA256. All subsequent frames are encrypted using AES-256-GCM with replay-protected sequence counters.
+5. **Revocation:** You can view all paired mobile devices and revoke any device at any time from the Desktop Dashboard.
+
+---
+
+## Security & Privacy Guarantees
+
+- **Zero Screenshot / Audio Disk Writes:** Screen frames and microphone buffers are processed strictly in volatile memory. No screenshots, OCR text, or audio recordings are ever written to disk.
+- **No Long-Lived Secret Exposure:** The mobile companion never receives your PC's master API keys or desktop credentials. Only short-lived, directional session keys are used.
+- **Screen Text is Untrusted:** Captured screen OCR and visual data are treated as untrusted input and never interpreted as system instructions.
+- **Hardware-Enforced Cryptography:** Local secrets on Windows are secured via Windows DPAPI; on Android, API keys are stored using hardware-backed Android Keystore / AES-256-GCM encryption.
+
+---
+
+## Building from Source
+
+### Prerequisites
+- Node.js 20+ and npm 10+
+- Windows 10 / 11 (for desktop build)
+- Java 17 + Android SDK (for mobile APK build)
+
+### Build Steps
 
 ```sh
-# Install dependencies
+# Clone repository
+git clone https://github.com/chiragsatish2011-pixel/Nomin-s-Trey.git
+cd Nomin-s-Trey
+
+# Install all monorepo dependencies
 npm install
 
-# Run core tests (pure Node, strict sandbox - 51 tests passing)
+# Run all test suites (80/80 tests passing across 15 suites)
 npm test
 
-# Typecheck and lint
+# Run monorepo typecheck & strict ESLint audit
 npm run typecheck
 npm run lint
 
-# Start the desktop application (Face widget, Tray, Dashboard)
-npm run dev
+# Build Desktop bundles
+npm --workspace=@nomin/desktop run build
 
-# Package Windows desktop app (unpackaged directory)
-npm run package
+# Build Windows NSIS installer
+npm --workspace=@nomin/desktop run installer
 
-# Build Windows NSIS Installer
-npm run installer
+# Build Mobile web bundle
+npm --workspace=@nomin/mobile run build
 ```
 
-See [USER_GUIDE.md](USER_GUIDE.md) for full usage instructions and [SECURITY_NOTES.md](SECURITY_NOTES.md) for security & privacy guarantees.
-
 ---
 
-## Credits & Ownership
+## Credits & Acknowledgements
 
-- **Author / Creator:** Chirag S
-- **Organization:** Nomin
+- **Author & Founder:** Chirag S
+- **Organization:** Nomin / The Nomin Company
 - **Copyright:** Copyright (c) 2026 Nomin / Chirag S
-- **Third-Party Notices:** See [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md)
-
----
-
-## Reference Architecture (Mac / iOS)
-
-The original Swift reference implementation (`Mac/`, `iOS/`, `Shared/`, `Tests/`) is preserved intact as the foundational specification.
-
----
-
-<div align="center" style="padding: 24px 12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-  
-  <h2 style="font-size: 24px; font-weight: 700; border-bottom: none; margin-bottom: 4px;">
-    Get Trey for Windows
-  </h2>
-  
-  <p style="font-size: 14px; color: #8b949e; margin-bottom: 20px;">
-    The Intelligent Focus Companion · Built by Nomin
-  </p>
-
-  <a href="https://github.com/chiragsatish2011-pixel/Nomin-s-Trey/releases" rel="nofollow" style="display: inline-flex; align-items: center; gap: 10px; padding: 12px 28px; border-radius: 40px; background: linear-gradient(135deg, #6C86F5 0%, #3B82F6 100%); color: #ffffff !important; font-size: 15px; font-weight: 700; text-decoration: none; box-shadow: 0 6px 20px rgba(59, 130, 246, 0.3);">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 4px;">
-      <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/>
-    </svg>
-    <span>Download for Windows (64-bit)</span>
-  </a>
-
-  <div style="margin-top: 14px; font-size: 11px; color: #8b949e;">
-    Compatible with Windows 10 & 11 · Free & Open Source · Version 0.2.0
-  </div>
-
-</div>
+- **Inspiration:** Pairing protocol architecture and character animation design inspired by Bluey by Riley Brown (dedicated under The Unlicense / Public Domain).
+- **Third-Party Licenses:** Full notices and attributions in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).

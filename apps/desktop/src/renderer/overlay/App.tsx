@@ -1,3 +1,11 @@
+/**
+ * Author: Chirag S
+ * Company: Nomin
+ * Copyright (c) 2026 Nomin / Chirag S
+ *
+ * Overlay renderer with Blue Pointer Cursor, Click Ripples, and Takeover status banner.
+ */
+
 import React, { useEffect, useState } from 'react'
 import { playChirp } from './chirp'
 
@@ -20,6 +28,21 @@ interface ResearchReportPayload {
   takeaway: string
 }
 
+interface TakeoverStatusPayload {
+  active: boolean
+  task?: string
+  step?: number
+  maxSteps?: number
+  thought?: string
+}
+
+interface RippleState {
+  id: number
+  x: number
+  y: number
+  button: 'left' | 'right' | 'middle'
+}
+
 export default function App(): React.JSX.Element {
   const [nudge, setNudge] = useState<NudgePayload | null>(null)
   const [report, setReport] = useState<ResearchReportPayload | null>(null)
@@ -27,13 +50,23 @@ export default function App(): React.JSX.Element {
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null)
   const [nudgeVisible, setNudgeVisible] = useState(false)
 
+  // Autonomous PC Takeover State
+  const [takeover, setTakeover] = useState<TakeoverStatusPayload>({ active: false })
+  const [ripples, setRipples] = useState<RippleState[]>([])
+  const [cursorAngle, setCursorAngle] = useState(0)
+  const [cursorSquish, setCursorSquish] = useState(false)
+
   useEffect(() => {
     const api = (window as unknown as {
       overlayAPI?: {
         onNudge: (cb: (payload: NudgePayload) => void) => () => void
         onReport: (cb: (payload: ResearchReportPayload) => void) => () => void
+        onTakeoverStatus: (cb: (status: TakeoverStatusPayload) => void) => () => void
+        onAnimateCursor: (cb: (data: { x: number; y: number; actionType: string; durationMs?: number }) => void) => () => void
+        onTriggerRipple: (cb: (data: { x: number; y: number; button?: 'left' | 'right' | 'middle' }) => void) => () => void
         setIgnoreMouseEvents: (ignore: boolean) => void
         openExternal: (url: string) => Promise<void>
+        stopTakeover: () => Promise<void>
       }
     }).overlayAPI
 
@@ -72,33 +105,77 @@ export default function App(): React.JSX.Element {
       setReportExpanded(false)
     })
 
+    const unsubTakeover = api.onTakeoverStatus?.((status) => {
+      setTakeover(status)
+      if (status.active) {
+        playChirp(0.8, 2)
+      } else {
+        setCursorPos(null)
+      }
+    })
+
+    const unsubAnimate = api.onAnimateCursor?.((data) => {
+      // Travel to target
+      setCursorPos((prev) => {
+        if (prev) {
+          const dx = data.x - prev.x
+          const angle = Math.max(-0.2, Math.min(0.2, dx / 800))
+          setCursorAngle(angle)
+        }
+        return { x: data.x, y: data.y }
+      })
+
+      // Squish effect on arrival
+      setTimeout(() => {
+        setCursorSquish(true)
+        setTimeout(() => setCursorSquish(false), 200)
+      }, data.durationMs ? data.durationMs - 100 : 350)
+    })
+
+    const unsubRipple = api.onTriggerRipple?.((data) => {
+      const newRipple: RippleState = {
+        id: Date.now() + Math.random(),
+        x: data.x,
+        y: data.y,
+        button: data.button || 'left'
+      }
+      setRipples((prev) => [...prev.slice(-4), newRipple])
+      setTimeout(() => {
+        setRipples((prev) => prev.filter((r) => r.id !== newRipple.id))
+      }, 700)
+    })
+
     return () => {
       unsubNudge()
       unsubReport()
+      unsubTakeover?.()
+      unsubAnimate?.()
+      unsubRipple?.()
     }
   }, [])
 
-  const handleCardMouseEnter = (): void => {
+  const handleInteractiveEnter = (): void => {
     const api = (window as unknown as {
       overlayAPI?: { setIgnoreMouseEvents: (ignore: boolean) => void }
     }).overlayAPI
     api?.setIgnoreMouseEvents(false)
   }
 
-  const handleCardMouseLeave = (): void => {
+  const handleInteractiveLeave = (): void => {
     const api = (window as unknown as {
       overlayAPI?: { setIgnoreMouseEvents: (ignore: boolean) => void }
     }).overlayAPI
     api?.setIgnoreMouseEvents(true)
   }
 
-  const handleOpenSource = (url: string, e: React.MouseEvent): void => {
-    e.stopPropagation()
+  const handleStopTakeover = async (): Promise<void> => {
     const api = (window as unknown as {
-      overlayAPI?: { openExternal: (url: string) => Promise<void> }
+      overlayAPI?: { stopTakeover: () => Promise<void> }
     }).overlayAPI
-    if (api && url) {
-      void api.openExternal(url)
+    if (api) {
+      await api.stopTakeover()
+      setTakeover({ active: false })
+      setCursorPos(null)
     }
   }
 
@@ -112,26 +189,218 @@ export default function App(): React.JSX.Element {
         fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
       }}
     >
-      {/* 0. CINEMATIC SCREEN TAKEOVER BACKDROP VIGNETTE */}
-      <div
-        style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'radial-gradient(circle at center, rgba(14, 10, 26, 0.45) 0%, rgba(6, 4, 12, 0.78) 100%)',
-          backdropFilter: 'blur(3px)',
-          WebkitBackdropFilter: 'blur(3px)',
-          opacity: nudgeVisible ? 1 : 0,
-          pointerEvents: 'none',
-          transition: 'opacity 0.35s ease-out',
-          zIndex: 9980
-        }}
-      />
+      {/* 0. CINEMATIC ACTIVE TAKEOVER AMBIENT GLOW */}
+      {takeover.active && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            boxShadow: 'inset 0 0 100px rgba(108, 134, 245, 0.25)',
+            border: '2px solid rgba(108, 134, 245, 0.4)',
+            pointerEvents: 'none',
+            zIndex: 9980
+          }}
+        />
+      )}
 
-      {/* 1. AGENTIC TOP-RIGHT RESEARCH REPORT PANEL */}
+      {/* 1. "TREY IS IN CONTROL" STATUS BANNER */}
+      {takeover.active && (
+        <div
+          onMouseEnter={handleInteractiveEnter}
+          onMouseLeave={handleInteractiveLeave}
+          style={{
+            position: 'absolute',
+            top: 24,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 16,
+            padding: '12px 24px',
+            background: 'rgba(12, 10, 24, 0.92)',
+            backdropFilter: 'blur(24px)',
+            WebkitBackdropFilter: 'blur(24px)',
+            border: '1.5px solid rgba(108, 134, 245, 0.7)',
+            borderRadius: 999,
+            boxShadow: '0 16px 40px rgba(0, 0, 0, 0.7), 0 0 30px rgba(108, 134, 245, 0.4)',
+            color: '#FFFFFF',
+            zIndex: 10010,
+            pointerEvents: 'auto',
+            animation: 'bannerSlideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
+          }}
+        >
+          {/* Pulsing Mascot Orb */}
+          <div
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #6C86F5 0%, #3B82F6 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 16,
+              boxShadow: '0 0 16px #6C86F5'
+            }}
+          >
+            🫐
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.04em', color: '#FFFFFF' }}>
+                Trey is in control
+              </span>
+              {takeover.step !== undefined && takeover.maxSteps !== undefined && (
+                <span style={{ fontSize: 11, fontWeight: 600, color: '#A9BCFF', background: 'rgba(108,134,245,0.2)', padding: '2px 8px', borderRadius: 999 }}>
+                  Step {takeover.step} / {takeover.maxSteps}
+                </span>
+              )}
+            </div>
+            {takeover.thought && (
+              <span style={{ fontSize: 11, color: 'rgba(255, 255, 255, 0.75)', maxWidth: 420, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {takeover.thought}
+              </span>
+            )}
+          </div>
+
+          {/* Emergency Stop Button */}
+          <button
+            onClick={handleStopTakeover}
+            style={{
+              padding: '6px 14px',
+              borderRadius: 999,
+              background: '#EF4444',
+              border: 'none',
+              color: '#FFFFFF',
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: 'pointer',
+              boxShadow: '0 0 14px rgba(239, 68, 68, 0.6)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              transition: 'transform 0.15s ease'
+            }}
+          >
+            <span>Stop (Ctrl+Alt+S)</span>
+          </button>
+        </div>
+      )}
+
+      {/* 2. BLUE POINTER CURSOR (Teardrop shape matching Riley Brown CursorOverlay.swift) */}
+      {cursorPos && (
+        <div
+          style={{
+            position: 'absolute',
+            left: cursorPos.x,
+            top: cursorPos.y,
+            width: 72,
+            height: 72,
+            pointerEvents: 'none',
+            zIndex: 10008,
+            transform: `translate(-6px, -6px) rotate(${cursorAngle}rad) scale(${cursorSquish ? '0.9, 1.1' : '1.0'})`,
+            transition: 'left 0.45s cubic-bezier(0.42, 0, 0.22, 1), top 0.45s cubic-bezier(0.42, 0, 0.22, 1), transform 0.2s ease-out',
+            filter: 'drop-shadow(0 12px 24px rgba(0, 0, 0, 0.55)) drop-shadow(0 0 18px rgba(108, 134, 245, 0.8))'
+          }}
+        >
+          {/* Teardrop SVG with 3 rounded corners and sharp pointer origin at top-left */}
+          <svg width="72" height="72" viewBox="0 0 96 96" fill="none">
+            <defs>
+              <linearGradient id="berryGradient" x1="24" y1="6" x2="72" y2="90" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stopColor="#A9BCFF" />
+                <stop offset="34%" stopColor="#6C86F5" />
+                <stop offset="68%" stopColor="#4254D6" />
+                <stop offset="100%" stopColor="#2B2F8F" />
+              </linearGradient>
+              <radialGradient id="berryShine" cx="29" cy="23" r="36" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.6" />
+                <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
+              </radialGradient>
+            </defs>
+
+            {/* Teardrop Body */}
+            <path
+              d="M 6 6 Q 48 0 72 24 A 36 36 0 0 1 72 72 A 36 36 0 0 1 24 72 Q 0 48 6 6 Z"
+              fill="url(#berryGradient)"
+              stroke="#FFFFFF"
+              strokeWidth="4"
+              strokeLinejoin="round"
+            />
+
+            {/* Gloss Shine */}
+            <ellipse cx="36" cy="28" rx="20" ry="14" fill="url(#berryShine)" transform="rotate(-25 36 28)" />
+
+            {/* Mini Googly Eyes on Cursor */}
+            <g transform="translate(38, 44)">
+              {/* Left Eye */}
+              <circle cx="0" cy="0" r="9" fill="#FFFFFF" stroke="rgba(0,0,0,0.15)" strokeWidth="1" />
+              <circle cx="-1" cy="1" r="4.5" fill="#17151F" />
+              <circle cx="-2" cy="0" r="1.5" fill="#FFFFFF" />
+
+              {/* Right Eye */}
+              <circle cx="18" cy="0" r="9" fill="#FFFFFF" stroke="rgba(0,0,0,0.15)" strokeWidth="1" />
+              <circle cx="17" cy="1" r="4.5" fill="#17151F" />
+              <circle cx="16" cy="0" r="1.5" fill="#FFFFFF" />
+            </g>
+          </svg>
+        </div>
+      )}
+
+      {/* 3. CLICK RIPPLES & PARTICLE BURSTS */}
+      {ripples.map((rip) => (
+        <div
+          key={rip.id}
+          style={{
+            position: 'absolute',
+            left: rip.x,
+            top: rip.y,
+            width: 0,
+            height: 0,
+            pointerEvents: 'none',
+            zIndex: 10007
+          }}
+        >
+          {/* Expanding Primary Ring */}
+          <div
+            style={{
+              position: 'absolute',
+              left: -38,
+              top: -38,
+              width: 76,
+              height: 76,
+              borderRadius: '50%',
+              border: `3px solid ${rip.button === 'right' ? '#A855F7' : '#6C86F5'}`,
+              animation: 'rippleExpand 0.65s cubic-bezier(0.2, 0.7, 0.3, 1) forwards'
+            }}
+          />
+
+          {/* 6 Radial Burst Stars */}
+          {[0, 60, 120, 180, 240, 300].map((angle, idx) => (
+            <div
+              key={idx}
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                background: '#FFFFFF',
+                boxShadow: '0 0 8px #6C86F5',
+                transform: `rotate(${angle}deg) translate(40px)`,
+                animation: 'starBurst 0.55s cubic-bezier(0.1, 0.8, 0.3, 1) forwards'
+              }}
+            />
+          ))}
+        </div>
+      ))}
+
+      {/* 4. RESEARCH REPORT PANEL */}
       {report && (
         <div
-          onMouseEnter={handleCardMouseEnter}
-          onMouseLeave={handleCardMouseLeave}
+          onMouseEnter={handleInteractiveEnter}
+          onMouseLeave={handleInteractiveLeave}
           onClick={() => setReportExpanded(!reportExpanded)}
           style={{
             position: 'absolute',
@@ -153,261 +422,37 @@ export default function App(): React.JSX.Element {
             overflowY: reportExpanded ? 'auto' : 'hidden'
           }}
         >
-          {/* Header Row */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: '50%',
-                  background: '#60A5FA',
-                  boxShadow: '0 0 8px #60A5FA'
-                }}
-              />
-              <span
-                style={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  letterSpacing: '0.08em',
-                  textTransform: 'uppercase',
-                  color: 'rgba(255, 255, 255, 0.6)'
-                }}
-              >
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#60A5FA', boxShadow: '0 0 8px #60A5FA' }} />
+              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255, 255, 255, 0.6)' }}>
                 Research Report
               </span>
             </div>
-
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                setReport(null)
-                handleCardMouseLeave()
-              }}
-              style={{
-                width: 24,
-                height: 24,
-                borderRadius: '50%',
-                border: 'none',
-                background: 'rgba(255, 255, 255, 0.12)',
-                color: 'rgba(255, 255, 255, 0.7)',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 14,
-                lineHeight: 1
-              }}
-              title="Close report"
-            >
-              ✕
-            </button>
+            <span style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.4)' }}>{reportExpanded ? '▲ Collapse' : '▼ Expand'}</span>
           </div>
-
-          {/* Question / Query */}
-          <div
-            style={{
-              fontSize: 12,
-              color: 'rgba(255, 255, 255, 0.5)',
-              marginBottom: 6,
-              fontWeight: 500
-            }}
-          >
-            "{report.question}"
+          <div style={{ fontSize: 17, fontWeight: 700, lineHeight: 1.35, marginBottom: 12 }}>{report.title}</div>
+          <div style={{ fontSize: 13, lineHeight: 1.6, color: 'rgba(255, 255, 255, 0.85)', marginBottom: 14 }}>
+            {reportExpanded ? report.paragraphs.join('\n\n') : report.paragraphs[0]}
           </div>
-
-          {/* Title */}
-          <h3
-            style={{
-              margin: '0 0 12px 0',
-              fontSize: 17,
-              fontWeight: 600,
-              lineHeight: 1.35,
-              color: '#FFFFFF'
-            }}
-          >
-            {report.title}
-          </h3>
-
-          {/* Paragraphs */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
-            {(reportExpanded ? report.paragraphs : report.paragraphs.slice(0, 1)).map((para, i) => (
-              <p
-                key={i}
-                style={{
-                  margin: 0,
-                  fontSize: 13,
-                  lineHeight: 1.55,
-                  color: 'rgba(255, 255, 255, 0.85)'
-                }}
-              >
-                {para}
-              </p>
-            ))}
-          </div>
-
-          {/* Expand Hint */}
-          {!reportExpanded && report.paragraphs.length > 1 && (
-            <div
-              style={{
-                fontSize: 12,
-                color: '#60A5FA',
-                fontWeight: 500,
-                marginBottom: 10
-              }}
-            >
-              Click card to expand ({report.paragraphs.length} paragraphs) ↓
-            </div>
-          )}
-
-          {/* Sources */}
-          {report.sources && report.sources.length > 0 && (
-            <div style={{ marginTop: 8, paddingTop: 10, borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
-              <div style={{ fontSize: 11, color: 'rgba(255, 255, 255, 0.45)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Sources
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {report.sources.map((src, i) => (
-                  <button
-                    key={i}
-                    onClick={(e) => handleOpenSource(src.url, e)}
-                    style={{
-                      background: 'rgba(96, 165, 250, 0.15)',
-                      border: '1px solid rgba(96, 165, 250, 0.3)',
-                      color: '#93C5FD',
-                      borderRadius: 12,
-                      padding: '4px 10px',
-                      fontSize: 11,
-                      cursor: 'pointer',
-                      textDecoration: 'none'
-                    }}
-                  >
-                    ↗ {src.title || src.url}
-                  </button>
-                ))}
-              </div>
+          {report.takeaway && (
+            <div style={{ padding: '10px 14px', borderRadius: 12, background: 'rgba(96, 165, 250, 0.12)', border: '1px solid rgba(96, 165, 250, 0.25)', fontSize: 12, color: '#93C5FD', fontWeight: 600 }}>
+              💡 {report.takeaway}
             </div>
           )}
         </div>
       )}
 
-      {/* 2. GLOWING LASER BEAM (Streams from bottom center to target) */}
-      {cursorPos && (
-        <svg
-          style={{
-            position: 'fixed',
-            inset: 0,
-            width: '100vw',
-            height: '100vh',
-            pointerEvents: 'none',
-            zIndex: 9992
-          }}
-        >
-          <defs>
-            <linearGradient id="laserGrad" x1="50%" y1="100%" x2="0%" y2="0%">
-              <stop offset="0%" stopColor="#6C86F5" stopOpacity="0.4" />
-              <stop offset="60%" stopColor="#38BDF8" stopOpacity="0.9" />
-              <stop offset="100%" stopColor="#A78BFA" stopOpacity="1" />
-            </linearGradient>
-            <filter id="laserGlow" x="-20%" y="-20%" width="140%" height="140%">
-              <feGaussianBlur stdDeviation="6" result="blur" />
-              <feMerge>
-                <feMergeNode in="blur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
-          </defs>
-          <line
-            x1={window.innerWidth / 2}
-            y1={window.innerHeight}
-            x2={cursorPos.x}
-            y2={cursorPos.y}
-            stroke="url(#laserGrad)"
-            strokeWidth="3.5"
-            strokeDasharray="10 6"
-            filter="url(#laserGlow)"
-            style={{ animation: 'laserFlow 1s linear infinite' }}
-          />
-        </svg>
-      )}
-
-      {/* 3. TARGET GLOWING SPOTLIGHT BOX */}
-      {cursorPos && (
-        <div
-          style={{
-            position: 'absolute',
-            left: cursorPos.x,
-            top: cursorPos.y,
-            width: nudge?.target?.width || 160,
-            height: nudge?.target?.height || 48,
-            transform: 'translate(-50%, -50%)',
-            borderRadius: 12,
-            border: '2.5px solid #6C86F5',
-            boxShadow:
-              '0 0 30px #6C86F5, 0 0 60px rgba(108, 134, 245, 0.6), inset 0 0 20px rgba(108, 134, 245, 0.3)',
-            pointerEvents: 'none',
-            zIndex: 10000,
-            animation: 'targetPulse 1.6s ease-in-out infinite alternate'
-          }}
-        >
-          {/* Corner crosshair accents */}
-          <div style={{ position: 'absolute', top: -4, left: -4, width: 10, height: 10, borderTop: '3px solid #FFFFFF', borderLeft: '3px solid #FFFFFF' }} />
-          <div style={{ position: 'absolute', top: -4, right: -4, width: 10, height: 10, borderTop: '3px solid #FFFFFF', borderRight: '3px solid #FFFFFF' }} />
-          <div style={{ position: 'absolute', bottom: -4, left: -4, width: 10, height: 10, borderBottom: '3px solid #FFFFFF', borderLeft: '3px solid #FFFFFF' }} />
-          <div style={{ position: 'absolute', bottom: -4, right: -4, width: 10, height: 10, borderBottom: '3px solid #FFFFFF', borderRight: '3px solid #FFFFFF' }} />
-        </div>
-      )}
-
-      {/* 4. FLUID POINTER ARROW (Flies in directly at target) */}
-      {cursorPos && (
-        <div
-          style={{
-            position: 'absolute',
-            left: cursorPos.x,
-            top: cursorPos.y,
-            transform: 'translate(-50%, -50%)',
-            transition: 'left 0.75s cubic-bezier(0.16, 1, 0.3, 1), top 0.75s cubic-bezier(0.16, 1, 0.3, 1)',
-            pointerEvents: 'none',
-            zIndex: 10002
-          }}
-        >
-          <div
-            style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              width: 54,
-              height: 54,
-              transform: 'translate(-50%, -50%)',
-              borderRadius: '50%',
-              border: '2px solid rgba(96, 165, 250, 0.85)',
-              animation: 'pulseRing 1.4s infinite'
-            }}
-          />
-          <svg width="44" height="44" viewBox="0 0 24 24" fill="none" style={{ filter: 'drop-shadow(0 0 10px rgba(96, 165, 250, 0.8))' }}>
-            <path
-              d="M3 3L10.07 19.97L12.58 12.58L19.97 10.07L3 3Z"
-              fill="#3B82F6"
-              stroke="#FFFFFF"
-              strokeWidth="2"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </div>
-      )}
-
-      {/* 5. ULTRA-VISIBLE HIGH-CONTRAST POPUP MESSAGE BUBBLE */}
+      {/* 5. NUDGE BUBBLE */}
       {nudge && (
         <div
-          onMouseEnter={handleCardMouseEnter}
-          onMouseLeave={handleCardMouseLeave}
+          onMouseEnter={handleInteractiveEnter}
+          onMouseLeave={handleInteractiveLeave}
           style={{
             position: 'absolute',
             top: 48,
             left: '50%',
-            transform: nudgeVisible
-              ? 'translateX(-50%) translateY(0) scale(1)'
-              : 'translateX(-50%) translateY(-24px) scale(0.92)',
+            transform: nudgeVisible ? 'translateX(-50%) translateY(0) scale(1)' : 'translateX(-50%) translateY(-24px) scale(0.92)',
             maxWidth: 660,
             width: '90%',
             padding: '20px 28px',
@@ -416,8 +461,7 @@ export default function App(): React.JSX.Element {
             WebkitBackdropFilter: 'blur(36px) saturate(200%)',
             border: '2px solid rgba(108, 134, 245, 0.9)',
             borderRadius: 24,
-            boxShadow:
-              '0 24px 60px rgba(0, 0, 0, 0.85), 0 0 45px rgba(108, 134, 245, 0.55), inset 0 0 20px rgba(108, 134, 245, 0.2)',
+            boxShadow: '0 24px 60px rgba(0, 0, 0, 0.85), 0 0 45px rgba(108, 134, 245, 0.55)',
             color: '#FFFFFF',
             display: 'flex',
             alignItems: 'center',
@@ -428,53 +472,15 @@ export default function App(): React.JSX.Element {
             pointerEvents: 'auto'
           }}
         >
-          {/* Animated Mascot Badge */}
-          <div
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: '50%',
-              background: 'linear-gradient(135deg, #6C86F5 0%, #3B82F6 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 0 24px rgba(108, 134, 245, 0.85)',
-              flexShrink: 0,
-              fontSize: 24
-            }}
-          >
+          <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#6C86F5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>
             🫐
           </div>
-
-          {/* Text Content */}
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              <span
-                style={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  letterSpacing: '1px',
-                  textTransform: 'uppercase',
-                  color: '#A9BCFF'
-                }}
-              >
-                Trey Focus Companion
-              </span>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#A9BCFF', marginBottom: 4 }}>
+              Trey Focus Companion
             </div>
-            <div
-              style={{
-                fontSize: 17,
-                fontWeight: 600,
-                lineHeight: 1.45,
-                color: '#FFFFFF',
-                textShadow: '0 2px 8px rgba(0, 0, 0, 0.6)'
-              }}
-            >
-              {nudge.message}
-            </div>
+            <div style={{ fontSize: 16, fontWeight: 600, color: '#FFFFFF' }}>{nudge.message}</div>
           </div>
-
-          {/* Dismiss button */}
           <button
             onClick={() => {
               setNudgeVisible(false)
@@ -484,16 +490,14 @@ export default function App(): React.JSX.Element {
               }, 300)
             }}
             style={{
-              padding: '9px 16px',
+              padding: '8px 16px',
               borderRadius: 12,
               background: 'rgba(255, 255, 255, 0.12)',
               border: '1px solid rgba(255, 255, 255, 0.25)',
               color: '#FFFFFF',
               fontSize: 13,
               fontWeight: 600,
-              cursor: 'pointer',
-              flexShrink: 0,
-              transition: 'background 0.15s ease'
+              cursor: 'pointer'
             }}
           >
             Got it ✓
@@ -502,23 +506,17 @@ export default function App(): React.JSX.Element {
       )}
 
       <style>{`
-        @keyframes laserFlow {
-          0% { stroke-dashoffset: 0; }
-          100% { stroke-dashoffset: -32; }
+        @keyframes bannerSlideDown {
+          0% { transform: translateX(-50%) translateY(-40px); opacity: 0; }
+          100% { transform: translateX(-50%) translateY(0); opacity: 1; }
         }
-        @keyframes targetPulse {
-          0% {
-            box-shadow: 0 0 25px #6C86F5, 0 0 50px rgba(108, 134, 245, 0.5), inset 0 0 15px rgba(108, 134, 245, 0.2);
-            transform: translate(-50%, -50%) scale(1);
-          }
-          100% {
-            box-shadow: 0 0 45px #38BDF8, 0 0 90px rgba(56, 189, 248, 0.8), inset 0 0 25px rgba(56, 189, 248, 0.4);
-            transform: translate(-50%, -50%) scale(1.03);
-          }
+        @keyframes rippleExpand {
+          0% { transform: scale(0.3); opacity: 1; }
+          100% { transform: scale(1.4); opacity: 0; }
         }
-        @keyframes pulseRing {
-          0% { transform: translate(-50%, -50%) scale(0.6); opacity: 1; }
-          100% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
+        @keyframes starBurst {
+          0% { opacity: 1; transform: rotate(var(--angle, 0deg)) translate(0px) scale(1); }
+          100% { opacity: 0; transform: rotate(var(--angle, 0deg)) translate(48px) scale(0.2); }
         }
       `}</style>
     </div>

@@ -99,6 +99,22 @@ export const SparklesIcon: React.FC<IconProps> = ({ size = 18, color = 'currentC
   </svg>
 )
 
+export const SmartphoneIcon: React.FC<IconProps> = ({ size = 18, color = 'currentColor', className, style }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} style={style}>
+    <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+    <line x1="12" y1="18" x2="12.01" y2="18" />
+  </svg>
+)
+
+export const QrCodeIcon: React.FC<IconProps> = ({ size = 18, color = 'currentColor', className, style }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} style={style}>
+    <rect x="3" y="3" width="7" height="7" />
+    <rect x="14" y="3" width="7" height="7" />
+    <rect x="14" y="14" width="7" height="7" />
+    <rect x="3" y="14" width="7" height="7" />
+  </svg>
+)
+
 export const CheckIcon: React.FC<IconProps> = ({ size = 18, color = 'currentColor', className, style }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className} style={style}>
     <polyline points="20 6 9 17 4 12" />

@@ -12,8 +12,10 @@ import {
   ScannerIcon,
   PipIcon,
   KeyIcon,
-  AlertIcon
+  AlertIcon,
+  SmartphoneIcon
 } from '../components/Icons'
+import { PairingSheet } from './PairingSheet'
 
 interface CheckItem {
   id: string
@@ -123,6 +125,9 @@ export interface DashboardAPIClient {
   queryResearch: (question: string) => Promise<unknown>
   minimizeWindow: () => Promise<void>
   closeWindow: () => Promise<void>
+  startTakeover: (task: string) => Promise<{ success: boolean; summary: string }>
+  stopTakeover: () => Promise<void>
+  isTakeoverActive: () => Promise<boolean>
 }
 
 // Apple-style Interactive Focus Timeline Component
@@ -223,6 +228,8 @@ export default function App(): React.JSX.Element {
   const [formattedTime, setFormattedTime] = useState<string>('30:00')
   const [taskInput, setTaskInput] = useState<string>('')
   const [durationInput, setDurationInput] = useState<number>(30)
+  const [takeoverRunning, setTakeoverRunning] = useState<boolean>(false)
+  const [takeoverStatusMsg, setTakeoverStatusMsg] = useState<string>('')
 
   // Character & Mood
   const [characterMood, setCharacterMood] = useState<TreyMood>('listening')
@@ -230,7 +237,7 @@ export default function App(): React.JSX.Element {
   const [gazePoint, setGazePoint] = useState<{ x: number; y: number } | undefined>(undefined)
 
   // Sheets & Popovers
-  const [activeSheet, setActiveSheet] = useState<'none' | 'history' | 'settings'>('none')
+  const [activeSheet, setActiveSheet] = useState<'none' | 'history' | 'settings' | 'pairing'>('none')
   const [selectedCheck, setSelectedCheck] = useState<CheckItem | null>(null)
   const [historyList, setHistoryList] = useState<HistoryRecord[]>([])
 
@@ -351,6 +358,26 @@ export default function App(): React.JSX.Element {
   }, [activeSheet, dashboardAPI])
 
   // Actions
+  const handleStartTakeover = async () => {
+    if (!taskInput.trim()) return
+    setTakeoverRunning(true)
+    setTakeoverStatusMsg('Trey is taking control of the PC…')
+    try {
+      const res = await dashboardAPI.startTakeover(taskInput.trim())
+      setTakeoverStatusMsg(res.summary)
+    } catch (err) {
+      setTakeoverStatusMsg(`Takeover error: ${String(err)}`)
+    } finally {
+      setTakeoverRunning(false)
+    }
+  }
+
+  const handleStopTakeover = async () => {
+    await dashboardAPI.stopTakeover()
+    setTakeoverRunning(false)
+    setTakeoverStatusMsg('Takeover stopped by user.')
+  }
+
   const handleStart = async () => {
     if (!taskInput.trim()) return
     await dashboardAPI.startFocus(taskInput.trim(), durationInput)
@@ -752,6 +779,29 @@ export default function App(): React.JSX.Element {
             <SettingsIcon size={14} color="#FFFFFF" />
             <span>Settings</span>
           </button>
+
+          {/* Pair Mobile Companion Trigger */}
+          <button
+            onClick={() => setActiveSheet(activeSheet === 'pairing' ? 'none' : 'pairing')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              height: 32,
+              padding: '0 12px',
+              borderRadius: 980,
+              background: activeSheet === 'pairing' ? 'rgba(108, 134, 245, 0.3)' : 'rgba(108, 134, 245, 0.12)',
+              border: '1px solid rgba(108, 134, 245, 0.3)',
+              color: '#A9BCFF',
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'all 0.15s ease-out'
+            }}
+          >
+            <SmartphoneIcon size={14} color="#A9BCFF" />
+            <span>Pair Phone</span>
+          </button>
         </div>
       </header>
 
@@ -945,6 +995,44 @@ export default function App(): React.JSX.Element {
                   <PlayIcon size={14} color="currentColor" />
                   <span>Start Focus Session</span>
                 </button>
+
+                {/* Autonomous PC Takeover (Computer-Use) Button */}
+                <button
+                  onClick={takeoverRunning ? handleStopTakeover : handleStartTakeover}
+                  disabled={!taskInput.trim()}
+                  style={{
+                    width: '100%',
+                    padding: '11px 0',
+                    borderRadius: 14,
+                    background: takeoverRunning
+                      ? 'linear-gradient(135deg, #EF4444 0%, #B91C1C 100%)'
+                      : taskInput.trim()
+                      ? 'linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%)'
+                      : 'rgba(255, 255, 255, 0.05)',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    color: taskInput.trim() ? '#FFFFFF' : 'rgba(255, 255, 255, 0.4)',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: taskInput.trim() ? 'pointer' : 'not-allowed',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    boxShadow: takeoverRunning
+                      ? '0 0 20px rgba(239, 68, 68, 0.6)'
+                      : taskInput.trim()
+                      ? '0 8px 24px rgba(139, 92, 246, 0.4)'
+                      : 'none',
+                    marginBottom: 16
+                  }}
+                >
+                  <span>{takeoverRunning ? '🛑 Stop Takeover (Ctrl+Alt+S)' : '⚡ Let Trey Do It (PC Takeover)'}</span>
+                </button>
+                {takeoverStatusMsg && (
+                  <div style={{ fontSize: 11, color: '#A9BCFF', marginBottom: 12, padding: '6px 12px', borderRadius: 8, background: 'rgba(108,134,245,0.1)' }}>
+                    {takeoverStatusMsg}
+                  </div>
+                )}
 
                 {/* Agentic Research / Voice Query Subcard */}
                 <div
@@ -1986,6 +2074,11 @@ export default function App(): React.JSX.Element {
             </div>
           </div>
         </div>
+      )}
+
+      {/* 7. SLIDE-UP MODAL: MOBILE PAIRING & COMPANION */}
+      {activeSheet === 'pairing' && (
+        <PairingSheet onClose={() => setActiveSheet('none')} />
       )}
     </div>
   )

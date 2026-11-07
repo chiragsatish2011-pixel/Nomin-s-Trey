@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - 'feature/**'
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test-and-lint:
+    name: Lint, Typecheck & Tests
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Monorepo ESLint Strict Audit
+        run: npm run lint
+
+      - name: Monorepo TypeScript Typecheck
+        run: npm run typecheck
+
+      - name: Run Test Suites
+        run: npm test
+
+      - name: Build Desktop Bundles
+        run: npm --workspace=@nomin/desktop run build
+
+      - name: Build Mobile Web Bundle
+        run: npm --workspace=@nomin/mobile run build

@@ -30,9 +30,16 @@ import { setupTray, updateTrayState, setExpression } from './tray'
 import { coordinator } from './coordinator'
 import { perceptionManager } from './perception'
 import { windowsPushToTalk } from './platform/windows/WindowsPushToTalk'
+import { windowsInputSimulation } from './platform/windows/WindowsInputSimulation'
 import { TaskParser } from '@nomin/core'
 import { loadSettings, saveSettings, AppSettings } from './store'
 import { configureAutoUpdates } from './updates'
+import { PairingManager } from './pairing/PairingManager.js'
+import { CompanionServer } from './pairing/CompanionServer.js'
+import { DiscoveryService } from './pairing/DiscoveryService.js'
+
+let companionServer: CompanionServer | null = null
+let discoveryService: DiscoveryService | null = null
 
 const gotTheLock = app.requestSingleInstanceLock()
 
@@ -73,13 +80,49 @@ if (!gotTheLock) {
     updateTrayState(coordinator)
     configureAutoUpdates()
 
+    // Initialize Mobile Companion Pairing Server and Discovery Service
+    const pairingManager = new PairingManager(59124)
+    companionServer = new CompanionServer(pairingManager, {
+      onStopRequested: (reason) => {
+        if (coordinator.isTakeoverActive()) {
+          coordinator.stopTakeover()
+        } else {
+          coordinator.pause(reason || 'Stopped from mobile companion')
+        }
+      },
+      onTaskStartRequested: (task, durationMinutes, mode) => {
+        if (mode === 'takeover') {
+          coordinator.startTakeover(task)
+        } else {
+          coordinator.start(task, durationMinutes)
+        }
+      },
+      onClientCountChanged: (count, names) => {
+        if (windows.dashboard && !windows.dashboard.isDestroyed()) {
+          windows.dashboard.webContents.send('companion:status', { count, names })
+        }
+      }
+    })
+    discoveryService = new DiscoveryService()
+
+    coordinator.setCompanionServer(companionServer)
+    await companionServer.start().catch((err) => console.warn('CompanionServer start failed:', err))
+    discoveryService.start({ port: companionServer.getPort(), fingerprint: 'unpaired' })
+
     // Windows powerMonitor events: lock-screen & suspend pause the session
     // Unlocking NEVER auto-resumes (strict focus safety policy)
+    // Global Safety Stop Hotkey: Ctrl+Alt+S stops takeover immediately (Requirement 7)
+    globalShortcut.register('CommandOrControl+Alt+S', () => {
+      coordinator.stopTakeover()
+    })
+
     powerMonitor.on('lock-screen', () => {
+      coordinator.stopTakeover()
       coordinator.pause('PC locked. Resume when you are ready.')
     })
 
     powerMonitor.on('suspend', () => {
+      coordinator.stopTakeover()
       coordinator.pause('PC sleeping or suspended. Resume when you are ready.')
     })
 
@@ -111,6 +154,20 @@ if (!gotTheLock) {
         })
       }
       return 'Test nudge sent to overlay.'
+    })
+
+    // Autonomous Agent PC Takeover IPC Handlers
+    ipcMain.handle('agent:startTakeover', async (_event, task: string) => {
+      return coordinator.startTakeover(task)
+    })
+
+    ipcMain.handle('agent:stopTakeover', async () => {
+      coordinator.stopTakeover()
+      return true
+    })
+
+    ipcMain.handle('agent:isTakeoverActive', async () => {
+      return coordinator.isTakeoverActive()
     })
 
     ipcMain.handle('focus:getHistory', async () => {
@@ -535,6 +592,34 @@ if (!gotTheLock) {
       }
     )
 
+    // Pairing & Companion IPC handlers
+    ipcMain.handle('pairing:startSession', async () => {
+      const port = companionServer ? companionServer.getPort() : 59124
+      const session = await pairingManager.startPairingSession(port)
+      discoveryService?.updateFingerprint(session.fingerprint)
+      return session
+    })
+
+    ipcMain.handle('pairing:getPairedDevices', async () => {
+      return pairingManager.getPairedDevices()
+    })
+
+    ipcMain.handle('pairing:revokeDevice', async (_event, id: string) => {
+      const revoked = pairingManager.revokeDevice(id)
+      if (revoked && companionServer) {
+        companionServer.disconnectDevice(id)
+      }
+      return revoked
+    })
+
+    ipcMain.handle('pairing:getStatus', async () => {
+      return {
+        port: companionServer ? companionServer.getPort() : 59124,
+        clientCount: companionServer ? companionServer.getConnectedClientsCount() : 0,
+        clientNames: companionServer ? companionServer.getConnectedClientNames() : []
+      }
+    })
+
     app.on('activate', () => {
       if (!windows.dashboard || windows.dashboard.isDestroyed()) {
         createDashboardWindow()
@@ -567,6 +652,10 @@ if (!gotTheLock) {
   })
 
   app.on('will-quit', () => {
+    coordinator.stopTakeover()
+    companionServer?.stop()
+    discoveryService?.stop()
+    windowsInputSimulation.dispose()
     windowsPushToTalk.stop().catch(() => {})
     globalShortcut.unregisterAll()
   })

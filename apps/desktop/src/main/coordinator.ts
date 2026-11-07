@@ -7,7 +7,8 @@ import {
   CheckResult,
   CoordinateMath,
   HistoryRecord,
-  ResearchReport
+  ResearchReport,
+  AgentLoop
 } from '@nomin/core'
 import { screen } from 'electron'
 import { exec } from 'child_process'
@@ -18,6 +19,10 @@ import { loadSettings, saveSettings, AppSettings } from './store'
 import { perceptionManager } from './perception'
 import { windowsSecretStore } from './platform/windows/WindowsSecretStore'
 import { windowsHistoryStore } from './platform/windows/WindowsHistoryStore'
+import { windowsScreenCapture } from './platform/windows/WindowsScreenCapture'
+import { windowsInputSimulation } from './platform/windows/WindowsInputSimulation'
+import { CompanionServer } from './pairing/CompanionServer.js'
+import { TreyMood, FocusActivity, FocusCheck as ProtocolFocusCheck } from '@nomin/protocol'
 
 const execAsync = promisify(exec)
 
@@ -84,7 +89,26 @@ export class FocusCoordinator {
 
   private lastCheckElapsed = 0
   private isChecking = false
+  private activeAgentLoop: AgentLoop | null = null
   private apiKeyReady: Promise<void>
+  private companionServer: CompanionServer | null = null
+  private syncRevision = 0
+
+  setCompanionServer(server: CompanionServer): void {
+    this.companionServer = server
+  }
+
+  broadcastFace(gazeX: number, gazeY: number, mood: TreyMood, talk = 0): void {
+    if (this.companionServer) {
+      this.companionServer.broadcast({
+        type: 'face',
+        gazeX,
+        gazeY,
+        mood,
+        talk
+      })
+    }
+  }
 
   constructor() {
     const settings = loadSettings()
@@ -297,6 +321,145 @@ export class FocusCoordinator {
     return enabled
       ? 'Developer Mode enabled (4x clock, 10s checks).'
       : 'Developer Mode disabled (normal clock, 30s checks).'
+  }
+
+  isTakeoverActive(): boolean {
+    return this.activeAgentLoop !== null
+  }
+
+  async startTakeover(task: string): Promise<{ success: boolean; summary: string }> {
+    if (this.activeAgentLoop) {
+      return { success: false, summary: 'A computer-use takeover is already active.' }
+    }
+
+    const trimmedTask = task.trim()
+    if (!trimmedTask) {
+      return { success: false, summary: 'Task description cannot be empty.' }
+    }
+
+    if (!this.provider.client.hasApiKey()) {
+      return { success: false, summary: 'Please configure your NVIDIA NIM API key first.' }
+    }
+
+    // Set companion character to thinking expression
+    if (windows.face && !windows.face.isDestroyed()) {
+      windows.face.webContents.send('face:expression', 'thinking')
+    }
+
+    // Initialize overlay takeover banner
+    if (windows.overlay && !windows.overlay.isDestroyed()) {
+      windows.overlay.webContents.send('overlay:takeoverStatus', {
+        active: true,
+        task: trimmedTask,
+        step: 0,
+        maxSteps: 25,
+        thought: 'Initializing visual perception…'
+      })
+    }
+
+    const primaryDisplay = screen.getPrimaryDisplay()
+    const allDisplays = screen.getAllDisplays()
+    let minX = 0
+    let minY = 0
+    let maxX = 0
+    let maxY = 0
+    for (const d of allDisplays) {
+      minX = Math.min(minX, d.bounds.x)
+      minY = Math.min(minY, d.bounds.y)
+      maxX = Math.max(maxX, d.bounds.x + d.bounds.width)
+      maxY = Math.max(maxY, d.bounds.y + d.bounds.height)
+    }
+
+    const virtualDesk = {
+      left: Math.round(minX * primaryDisplay.scaleFactor),
+      top: Math.round(minY * primaryDisplay.scaleFactor),
+      width: Math.round((maxX - minX) * primaryDisplay.scaleFactor),
+      height: Math.round((maxY - minY) * primaryDisplay.scaleFactor)
+    }
+
+    this.activeAgentLoop = new AgentLoop(
+      this.provider.client,
+      this.provider.governor,
+      windowsScreenCapture,
+      windowsInputSimulation
+    )
+
+    try {
+      const result = await this.activeAgentLoop.run({
+        task: trimmedTask,
+        maxSteps: 25,
+        display: {
+          x: primaryDisplay.bounds.x,
+          y: primaryDisplay.bounds.y,
+          width: primaryDisplay.bounds.width,
+          height: primaryDisplay.bounds.height,
+          scaleFactor: primaryDisplay.scaleFactor
+        },
+        virtualScreen: virtualDesk,
+        onStepProgress: (step, maxSteps, thought, action) => {
+          if (windows.overlay && !windows.overlay.isDestroyed()) {
+            windows.overlay.webContents.send('overlay:takeoverStatus', {
+              active: true,
+              task: trimmedTask,
+              step,
+              maxSteps,
+              thought
+            })
+          }
+          if (windows.face && !windows.face.isDestroyed()) {
+            const expr = action.type === 'click' || action.type === 'type' ? 'talking' : 'pointing'
+            windows.face.webContents.send('face:expression', expr)
+          }
+        },
+        onAnimateCursor: async (logicalX, logicalY, actionType) => {
+          if (windows.overlay && !windows.overlay.isDestroyed()) {
+            windows.overlay.webContents.send('overlay:animateCursor', {
+              x: logicalX,
+              y: logicalY,
+              actionType,
+              durationMs: 450
+            })
+          }
+          if (windows.face && !windows.face.isDestroyed()) {
+            windows.face.webContents.send('face:expression', 'pointing')
+          }
+          // Dwell for smooth visual travel before real physical click executes
+          await new Promise((r) => setTimeout(r, 450))
+
+          if (windows.overlay && !windows.overlay.isDestroyed()) {
+            windows.overlay.webContents.send('overlay:triggerRipple', {
+              x: logicalX,
+              y: logicalY,
+              button: actionType === 'right_click' ? 'right' : 'left'
+            })
+          }
+        }
+      })
+
+      if (windows.face && !windows.face.isDestroyed()) {
+        windows.face.webContents.send('face:expression', result.success ? 'happy' : 'resting')
+      }
+
+      return result
+    } finally {
+      this.activeAgentLoop = null
+      if (windows.overlay && !windows.overlay.isDestroyed()) {
+        windows.overlay.webContents.send('overlay:takeoverStatus', { active: false })
+      }
+    }
+  }
+
+  stopTakeover(): void {
+    if (this.activeAgentLoop) {
+      this.activeAgentLoop.stop()
+      this.activeAgentLoop = null
+    }
+    if (windows.overlay && !windows.overlay.isDestroyed()) {
+      windows.overlay.webContents.send('overlay:takeoverStatus', { active: false })
+    }
+    if (windows.face && !windows.face.isDestroyed()) {
+      windows.face.webContents.send('face:expression', 'resting')
+    }
   }
 
   private async persistCurrentSession(): Promise<void> {
@@ -954,6 +1117,41 @@ export class FocusCoordinator {
     }
     if (windows.face && !windows.face.isDestroyed()) {
       windows.face.webContents.send('focus:sync', syncData)
+    }
+
+    if (this.companionServer) {
+      this.syncRevision += 1
+      this.companionServer.broadcast({
+        type: 'state',
+        revision: this.syncRevision,
+        current: current
+          ? {
+              id: current.id,
+              task: current.task,
+              duration: current.duration,
+              elapsed: current.elapsed,
+              realElapsed: this.engine.realActiveElapsed,
+              status: current.status,
+              detail: current.detail,
+              usedDeveloperMode: Boolean(current.usedDeveloperMode || current.developerMode),
+              developerMode: Boolean(current.developerMode),
+              checks: current.checks.map((c) => ({
+                id: c.id,
+                elapsed: c.elapsed,
+                activity: c.activity as FocusActivity,
+                probability: c.probability,
+                confidence: c.confidence,
+                probabilities: c.probabilities as ProtocolFocusCheck['probabilities'],
+                sampleDuration: c.sampleDuration,
+                nudged: Boolean(c.nudged)
+              }))
+            }
+          : undefined,
+        history: [],
+        developerMode: this.developerMode,
+        takeoverActive: this.isTakeoverActive(),
+        sentAt: Date.now()
+      })
     }
   }
 }

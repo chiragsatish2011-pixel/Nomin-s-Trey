@@ -57,7 +57,9 @@ export default [
       'build/**',
       '.build/**',
       '.wrap/**',
-      '.gsd/**'
+      '.gsd/**',
+      'scripts/**',
+      'apps/mobile/android/**'
     ]
   }
 ]
