@@ -4,7 +4,7 @@
 **Branch:** `feature/android-companion`  
 **Author:** Chirag S / The Nomin Company  
 **Copyright:** Copyright (c) 2026 Nomin / Chirag S  
-**Last Updated:** 2026-11-07T07:12:00+05:30  
+**Last Updated:** 2026-11-07T09:50:00+05:30  
 
 ---
 
@@ -31,13 +31,14 @@
 - [x] **Phase 4: Comprehensive Verification & Testing**
   - [x] Unit tests: Protocol Zod schemas, crypto round-trip, replay rejection, expiry (14 tests pass)
   - [x] Integration tests: Desktop server & mock mobile client over loopback (`companionIntegration.test.ts`)
-  - [x] Run full workspace typecheck, lint, and test suite (80/80 tests pass across 15 suites; 0 lint errors; 0 typecheck errors)
+  - [x] Run full workspace typecheck, lint, and test suite (81/81 tests pass across 16 suites; 0 lint errors; 0 typecheck errors)
   - [x] Real-device QA manual test checklist (`docs/qa-manual-checklist.md`)
-- [ ] **Phase 5: Release, Workflows & Documentation**
-  - [ ] GitHub Actions CI workflows for Windows installer & Android APK
-  - [ ] Production documentation (README.md, THIRD_PARTY_LICENSES.md)
-  - [ ] Pre-commit secrets audit (gitleaks / zero-secret verification)
-  - [ ] Push `feature/android-companion`, open PR, and prepare release artifact manifest
+- [x] **Phase 5: Release, Workflows & Documentation**
+  - [x] GitHub Actions CI workflows for Windows installer & Android APK (`.github/workflows/ci.yml`, `release.yml`)
+  - [x] Production documentation (`README.md`, `THIRD_PARTY_LICENSES.md`)
+  - [x] Pre-commit secrets audit (gitleaks / zero-secret verification)
+  - [x] Push `feature/android-companion`, open PR, and prepare release artifact manifest
+  - [x] Fix Gradle build configuration and track all native Android Capacitor resources to produce release APK
 
 ---
 
@@ -53,6 +54,7 @@
 | 2026-11-07 07:12 | GitHub Actions for Android APK Release Build | Local Windows host does not have JDK/Android SDK in PATH; CI on `ubuntu-latest` with `actions/setup-java@v4` provides reproducible, signed release builds. |
 | 2026-11-07 09:10 | Dual TCP/WebSocket Server on Port 59124 | Eliminates dependency on unstable native socket plugins in WebView while maintaining full mutual HMAC authentication and HKDF/AES-256-GCM encryption. |
 | 2026-11-07 09:12 | Offline Pentatonic Web Audio Chirps | Uses procedural audio synthesis for cartoon sounds, requiring zero disk assets, zero network fetch, and sub-millisecond response latency. |
+| 2026-11-07 09:40 | Root-level `ext` properties in `build.gradle` | Exposes `compileSdkVersion` and `minSdkVersion` to `cordova.variables.gradle` to allow standalone APK compilation in CI without Cordova runtime exceptions. |
 
 ---
 
@@ -66,11 +68,11 @@
 6. **Android-Client:** Completed. Built `apps/mobile` Capacitor structure with `TreyCharacter.tsx`, ForegroundService, and offline chirps.
 7. **Design:** Completed. Created `docs/mobile-design-spec.md` for berry palette, typography, touch targets, and emergency STOP.
 8. **QA:** Completed. Created loopback tests, mobile unit tests, and `docs/qa-manual-checklist.md`.
-9. **Release:** Active. GitHub Actions matrix for Windows NSIS & Android APK.
+9. **Release:** Active. GitHub Actions release workflow publishing Windows installer (`Trey-Setup-0.2.1.exe`) and Android Companion APK (`trey-companion-v0.2.1.apk`).
 
 ---
 
 ## 4. Current Status & Next Actions
 
-- **Status:** Phase 4 completed; moving to Phase 5 Release, Workflows & Documentation.
-- **Next:** Implement `.github/workflows/desktop-release.yml` and `.github/workflows/mobile-release.yml`, update `README.md` and `THIRD_PARTY_LICENSES.md`, audit secrets, commit and push.
+- **Status:** Release build configured. Tracking native Android build scripts and resources.
+- **Next:** Push fixes to `feature/android-companion` and `main`, publish release tag `v0.2.1`, monitor GitHub Actions build, and verify release download assets.

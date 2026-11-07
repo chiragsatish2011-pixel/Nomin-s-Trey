@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Trey</string>
+    <string name="title_activity_main">Trey</string>
+    <string name="package_name">com.nomin.trey</string>
+    <string name="custom_url_scheme">trey-pair</string>
+</resources>
