@@ -537,7 +537,7 @@ if (!gotTheLock) {
         }
         if (windows.overlay && !windows.overlay.isDestroyed()) {
           windows.overlay.webContents.send('overlay:nudge', {
-            message: '🎤 Listening... Release J when done.'
+            message: 'Listening... Release J when done.'
           })
         }
       },

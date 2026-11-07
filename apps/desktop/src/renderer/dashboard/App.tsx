@@ -13,7 +13,10 @@ import {
   PipIcon,
   KeyIcon,
   AlertIcon,
-  SmartphoneIcon
+  SmartphoneIcon,
+  ZapIcon,
+  CheckCircleIcon,
+  InfoIcon
 } from '../components/Icons'
 import { PairingSheet } from './PairingSheet'
 
@@ -1026,7 +1029,7 @@ export default function App(): React.JSX.Element {
                     marginBottom: 16
                   }}
                 >
-                  <span>{takeoverRunning ? '🛑 Stop Takeover (Ctrl+Alt+S)' : '⚡ Let Trey Do It (PC Takeover)'}</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>{takeoverRunning ? <StopIcon size={14} /> : <ZapIcon size={14} />}{takeoverRunning ? 'Stop Takeover (Ctrl+Alt+S)' : 'Let Trey Do It (PC Takeover)'}</span>
                 </button>
                 {takeoverStatusMsg && (
                   <div style={{ fontSize: 11, color: '#A9BCFF', marginBottom: 12, padding: '6px 12px', borderRadius: 8, background: 'rgba(108,134,245,0.1)' }}>
@@ -1081,7 +1084,7 @@ export default function App(): React.JSX.Element {
                         cursor: isResearching || !researchQuery.trim() ? 'not-allowed' : 'pointer'
                       }}
                     >
-                      {isResearching ? '…' : '⚡ Ask'}
+                      {isResearching ? '…' : <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><ZapIcon size={12} /> Ask</span>}
                     </button>
                   </div>
                 </div>
@@ -1682,7 +1685,7 @@ export default function App(): React.JSX.Element {
                           transition: 'all 0.15s ease'
                         }}
                       >
-                        {testingConnection ? 'Testing Connection...' : '⚡ Test Connection'}
+                        {testingConnection ? 'Testing Connection...' : <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><ZapIcon size={14} /> Test Connection</span>}
                       </button>
                       <button
                         onClick={handleRemoveApiKey}
@@ -1735,7 +1738,7 @@ export default function App(): React.JSX.Element {
                             : '#FFFFFF'
                     }}
                   >
-                    <span>{testFeedback.type === 'success' ? '✅' : testFeedback.type === 'error' ? '⚠️' : 'ℹ️'}</span>
+                    <span>{testFeedback.type === 'success' ? <CheckCircleIcon size={14} color="#86EFAC" /> : testFeedback.type === 'error' ? <AlertIcon size={14} color="#FCA5A5" /> : <InfoIcon size={14} color="#FFFFFF" />}</span>
                     <span>{testFeedback.message}</span>
                   </div>
                 )}
