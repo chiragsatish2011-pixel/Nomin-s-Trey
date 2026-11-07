@@ -16,7 +16,7 @@ All automated test suites are executed via Vitest and TypeScript strict compiler
 | Protocol & Zod Schemas | `@nomin/protocol` | 9 | **PASS** | `packages/protocol/test/protocol.test.ts` |
 | Loopback & Mutual Auth Integration | `@nomin/protocol` | 5 | **PASS** | `packages/protocol/test/companionIntegration.test.ts` |
 | Mobile Storage & Mode Settings | `@nomin/mobile` | 4 | **PASS** | `apps/mobile/src/mobile.test.ts` |
-| Core Engine, Classifier & Takeover Loop | `@nomin/core` | 62 | **PASS** | `packages/core/test/*.test.ts` |
+| Core Engine, Classifier & Takeover Loop | `@nomin/core` | 64 | **PASS** | `packages/core/test/*.test.ts` |
 | Monorepo TypeScript Typecheck | All workspaces | 4 workspaces | **PASS** | `npm run typecheck` (0 errors) |
 | Monorepo ESLint Strict Audit | All workspaces | Monorepo | **PASS** | `npm run lint` (0 errors) |
 | Desktop Vite Production Bundle | `@nomin/desktop` | 10 SSR/Web artifacts | **PASS** | `npm --workspace=@nomin/desktop run build` |
