@@ -1,76 +1,64 @@
-# Trey Android Companion & Desktop Integration — Status & Execution Tracker
+# Status: Trey Apple-Style Design & Motion Parity
 
-**Product:** Trey by Chirag S / The Nomin Company (`com.nomin.trey`)  
-**Branch:** `feature/android-companion`  
-**Author:** Chirag S / The Nomin Company  
-**Copyright:** Copyright (c) 2026 Nomin / Chirag S  
-**Last Updated:** 2026-11-07T07:12:00+05:30  
+**Active Branch**: `feature/apple-design-and-motion`  
+**Engineer**: Chirag S / The Nomin Company (`com.nomin.trey`)  
+**Last Updated**: 2026-11-07  
 
 ---
 
-## 1. Master Phase Checklist
+## Progress Checklist
 
-- [x] **Phase 1: Research & Specifications**
-  - [x] Analyze reference implementation (`rbrown101010/bluey-by-riley`) Mac/iOS/Shared
-  - [x] Audit NVIDIA NIM endpoints, models, rate limits, guided JSON & voice options
-  - [x] Evaluate Android framework options (Native Kotlin vs React Native vs Capacitor)
-  - [x] Investigate local & off-network secure connectivity (mDNS vs Tailscale vs WebRTC)
-  - [x] Analyze Keystore / secret security & phone control policies (AccessibilityService)
-  - [x] Author comprehensive `docs/mobile-research.md`
-- [x] **Phase 2: Protocol & Architecture Design**
-  - [x] Establish `packages/protocol` workspace with versioned Zod schemas
-  - [x] Specify mutual authentication, HKDF key derivation, AES-GCM replay protection
-  - [x] Author visual design specification (character animations, themes, touch targets, STOP)
-- [x] **Phase 3: Desktop Server & Mobile Client Build**
-  - [x] Desktop: Ephemeral QR pairing server, mDNS advertisement, session broadcast
-  - [x] Desktop: Dashboard pairing sheet & revoked device manager
-  - [x] Android: Multi-mode companion app (Mode A: Companion, Mode B: Standalone)
-  - [x] Android: CameraX QR scanner, secure Keystore storage, foreground service
-  - [x] Android: Trey character Canvas rendering with 60fps springs, voice & text input
-  - [x] Android: Single-source-of-truth timer & timeline display, immediate STOP button
-- [x] **Phase 4: Comprehensive Verification & Testing**
-  - [x] Unit tests: Protocol Zod schemas, crypto round-trip, replay rejection, expiry (14 tests pass)
-  - [x] Integration tests: Desktop server & mock mobile client over loopback (`companionIntegration.test.ts`)
-  - [x] Run full workspace typecheck, lint, and test suite (80/80 tests pass across 15 suites; 0 lint errors; 0 typecheck errors)
-  - [x] Real-device QA manual test checklist (`docs/qa-manual-checklist.md`)
-- [ ] **Phase 5: Release, Workflows & Documentation**
-  - [ ] GitHub Actions CI workflows for Windows installer & Android APK
-  - [ ] Production documentation (README.md, THIRD_PARTY_LICENSES.md)
-  - [ ] Pre-commit secrets audit (gitleaks / zero-secret verification)
-  - [ ] Push `feature/android-companion`, open PR, and prepare release artifact manifest
+- [x] **Step 1: Reference Video Discovery & Analysis**
+  - Discovered reference: `Can Claude build a cross-platform AI app - Riley Brown (1080p, h264).mp4` (63.8MB, 1080x1920 portrait, 30fps, 139.19s).
+  - Saved to `reference/video/reference.mp4` (ignored in git).
+  - Audio extracted to `reference/analysis/audio/reference_audio.wav`.
+  - Transcribed with `faster-whisper 1.2.1` to `reference/analysis/transcript.txt` with exact timestamps.
+  - Extracted 2fps overview frames (278 frames) and 30fps native segment frames (1440 frames across 4 segments).
 
----
+- [x] **Step 2: Record Trey Before**
+  - Implemented `TREY_ALLOW_SCREEN_RECORDING=1` development-only override in `apps/desktop/src/main/windows.ts`.
+  - Built automated scenario script `scripts/record-trey-before.mjs`.
+  - Recorded `reference/recordings/trey-before.mp4` (12.0s, 60fps, 1600x1000).
 
-## 2. Architecture Decisions Log
+- [x] **Step 3: Motion Specification**
+  - Documented complete mathematical specs in `docs/motion-spec.md` directly from Swift reference (`CursorOverlay.swift`, `ReportPanel.swift`, `LiveVoice.swift`).
+  - Recorded exact formulas: launch easing, starburst, ripples, squish curve, and trip duration.
 
-| Timestamp | Decision | Rationale |
-| :--- | :--- | :--- |
-| 2026-11-07 07:05 | Work on `feature/android-companion` | Preserves git history; strictly adheres to non-force-push constraints. |
-| 2026-11-07 07:11 | Standardize on `@nomin/protocol` package | Shared Zod schemas between Electron desktop and mobile client guarantee zero drift in wire packets and framing. |
-| 2026-11-07 07:12 | Capacitor + React for Android companion | Enables 100% direct reuse of `TreyCharacter.tsx` HTML5 Canvas spring physics and math, identical visual fidelity, single stack, and native Android foreground service via AndroidX. |
-| 2026-11-07 07:12 | Zero Phone Storage of Master NIM API Key | In Companion Mode, phone receives short-lived AES-GCM session tokens; PC main process executes AI calls. In Standalone Mode, user provides key stored in Android Keystore / EncryptedSharedPreferences. |
-| 2026-11-07 07:12 | Opt-in AccessibilityService / MediaProjection | Standalone device-control is disabled by default due to Android 13+ restricted settings security barriers and privacy concerns. |
-| 2026-11-07 07:12 | GitHub Actions for Android APK Release Build | Local Windows host does not have JDK/Android SDK in PATH; CI on `ubuntu-latest` with `actions/setup-java@v4` provides reproducible, signed release builds. |
-| 2026-11-07 09:10 | Dual TCP/WebSocket Server on Port 59124 | Eliminates dependency on unstable native socket plugins in WebView while maintaining full mutual HMAC authentication and HKDF/AES-256-GCM encryption. |
-| 2026-11-07 09:12 | Offline Pentatonic Web Audio Chirps | Uses procedural audio synthesis for cartoon sounds, requiring zero disk assets, zero network fetch, and sub-millisecond response latency. |
+- [x] **Step 4: Apple Design System Specification**
+  - Documented tokens in `docs/design-system.md` and created `apps/desktop/src/renderer/tokens.ts`.
+  - Created automated regression test `packages/core/test/noEmoji.test.ts` (enforces 0 emoji violations).
 
----
+- [x] **Step 5: Rebuild in Trey**
+  - [x] Added vector icons in `apps/desktop/src/renderer/components/Icons.tsx` (Zap, Stop, Check, CheckCircle, Info, Alert, Minus, ChevronUp, ChevronDown, TreyMascot, FileText, ExternalLink, Lightbulb, Smartphone).
+  - [x] Eliminated all emoji violations from `apps/desktop/src/` to pass `noEmoji.test.ts` (0 violations).
+  - [x] Restyled Overlay Window (`apps/desktop/src/renderer/overlay/App.tsx`):
+    - 72x72 teardrop cursor with 4pt white rim, radial gloss highlight, dual eyes with velocity tracking, arrival squish.
+    - 650ms click ripple (`cubic-bezier(0.2, 0.7, 0.3, 1)`) and 550ms 6-particle starburst (`cubic-bezier(0.1, 0.8, 0.3, 1)`).
+    - Speech bubble: gradient `#FFFFFF` to `#EEF0FF`, border `#6C86F5`, zero glow, downward tail.
+    - Top-right research panel: 400x190 collapsed, 520x420 expanded, r=22px continuous, circular minus button, zero glow.
+    - Apple pill HUD banner with vector icons, monospace step indicators, zero emojis, zero glow.
+  - [x] Restyled Dashboard Window (`apps/desktop/src/renderer/dashboard/App.tsx`):
+    - Inter / Segoe UI Variable typography, 76px countdown timer with tabular figures, zero emojis, Apple card tokens.
 
-## 3. Subagent Work Packages
+- [x] **Step 6: Record Trey After**
+  - Built scenario script `scripts/record-trey-after.mjs`.
+  - Encoded `reference/recordings/trey-after.mp4` at 60fps (12.0s, 1600x1000).
 
-1. **Research-Bluey:** Completed. Audited `SecurePairing.swift`, `GooglyLink.swift`, `FocusClient.swift`, `FaceView.swift`.
-2. **Research-Android:** Completed. Evaluated native vs hybrid; chose Capacitor + React with native AndroidX ForegroundService.
-3. **Research-NIM:** Completed. Verified endpoints, multimodal tool schemas, rate limits, audio STT/TTS alternatives.
-4. **Security Subagent:** Completed. Reviewed threat model, mutual HMAC challenge, HKDF-derived directional keys, replay counter, secret expiry.
-5. **Desktop-Server:** Completed. Implemented ephemeral QR pairing server, mDNS advertisement, session broadcast, and revoked device store.
-6. **Android-Client:** Completed. Built `apps/mobile` Capacitor structure with `TreyCharacter.tsx`, ForegroundService, and offline chirps.
-7. **Design:** Completed. Created `docs/mobile-design-spec.md` for berry palette, typography, touch targets, and emergency STOP.
-8. **QA:** Completed. Created loopback tests, mobile unit tests, and `docs/qa-manual-checklist.md`.
-9. **Release:** Active. GitHub Actions matrix for Windows NSIS & Android APK.
+- [x] **Step 7: Verification & Parity Report**
+  - Extracted 12 frame-by-frame before/after comparison screenshots into `reference/analysis/comparison/`.
+  - Authored comprehensive quantitative report in `docs/parity-report.md`.
+
+- [x] **Step 8: Final Cleanup & Validation**
+  - `npm run typecheck`: Passed cleanly across all 4 workspaces (`core`, `protocol`, `desktop`, `mobile`).
+  - `npm run lint`: Passed with 0 errors and 0 warnings.
+  - `npm test`: Passed (81/81 tests passing across `core`, `protocol`, `mobile`).
 
 ---
 
-## 4. Current Status & Next Actions
+## Decisions
 
-- **Status:** Phase 4 completed; moving to Phase 5 Release, Workflows & Documentation.
-- **Next:** Implement `.github/workflows/desktop-release.yml` and `.github/workflows/mobile-release.yml`, update `README.md` and `THIRD_PARTY_LICENSES.md`, audit secrets, commit and push.
+1. **Font System**: Apple SF Pro / SF Symbols cannot be legally bundled on Windows; we use `Inter`, `"Segoe UI Variable"`, and `-apple-system` with Lucide MIT vector icons.
+2. **Zero-Glow Mandate**: The reference explicitly removes all glows ("all glows are gone"); prior heavy box-shadow glows are replaced with crisp Apple-style borders (`1px rgba(255,255,255,0.08)` or `2.5px #6C86F5`) and subtle diffuse elevation shadows.
+3. **Audio Synthesis**: Web Audio procedural pentatonic chime (`chirp.ts`) directly ports `LiveVoice.swift:576-618` ($C_5 \dots E_6$, 25ms upward scoop, 18Hz vibrato on last syllable, zero audio file dependencies).
+4. **Research Panel**: Positioned top-right (`x: width - 24, y: 24`), 400x190 collapsed, 520x420 expanded, continuous 22px rounded rectangle, 26px circular action buttons.
+5. **Screen Recording Flag**: `TREY_ALLOW_SCREEN_RECORDING=1` defaults to disabled in production, maintaining full window capture security protection.
