@@ -100,17 +100,19 @@ jobs:
             export KEYSTORE_PASSWORD="${{ secrets.KEYSTORE_PASSWORD }}"
             export KEY_ALIAS="${{ secrets.KEY_ALIAS }}"
             export KEY_PASSWORD="${{ secrets.KEY_PASSWORD }}"
-            gradle assembleRelease
+            gradle assembleRelease --stacktrace
             mkdir -p ../../../release-artifacts
-            cp app/build/outputs/apk/release/*.apk ../../../release-artifacts/trey-companion-${TAG_VAL}.apk || true
+            find app/build/outputs/apk -name "*.apk" -exec cp {} ../../../release-artifacts/trey-companion-${TAG_VAL}.apk \;
           else
             echo "Building debug-signed release fallback APK..."
-            gradle assembleDebug
+            gradle assembleDebug --stacktrace
             mkdir -p ../../../release-artifacts
             find app/build/outputs/apk -name "*.apk" -exec cp {} ../../../release-artifacts/trey-companion-${TAG_VAL}-debug-signed.apk \;
+            cp ../../../release-artifacts/trey-companion-${TAG_VAL}-debug-signed.apk ../../../release-artifacts/trey-companion-${TAG_VAL}.apk || true
           fi
 
           cd ../../../release-artifacts
+          ls -la
           sha256sum trey-companion-*.apk > android-sha256.txt || true
           cat android-sha256.txt
 
