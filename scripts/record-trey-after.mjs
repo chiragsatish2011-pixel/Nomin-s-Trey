@@ -42,16 +42,6 @@ app.whenReady().then(async () => {
     }
   })
 
-  // Scripted scenario timeline (12.0s = 720 frames at 60fps)
-  // 0.0s - 2.0s: IDLE (Trey resting, blinking, watching mouse)
-  // 2.0s - 3.5s: LISTENING (Push-to-talk J held, listening face, clean vector indicator)
-  // 3.5s - 5.5s: THINKING (Vision model processing, Apple HUD pill appears)
-  // 5.5s - 8.0s: POINTING (Teardrop cursor launches along cubic-bezier(0.42, 0, 0.22, 1) to target button at x:640, y:380)
-  // 8.0s - 9.0s: CLICK (0.14 depth squish, 650ms ring ripple, 550ms 6-starburst explosion)
-  // 9.0s - 10.5s: POPUP (ReportPanel.swift top-right card appears with 22px continuous radius, #6C86F5 border, zero glow)
-  // 10.5s - 11.5s: DISMISS (Minus button clicked, clean fade-out)
-  // 11.5s - 12.0s: DONE & STOP (Happy expression, clean reset)
-
   const scenarioHtml = `
   <!DOCTYPE html>
   <html>
@@ -61,7 +51,6 @@ app.whenReady().then(async () => {
       * { box-sizing: border-box; margin: 0; padding: 0; font-family: Inter, "Segoe UI Variable", -apple-system, BlinkMacSystemFont, sans-serif; }
       body { background: #0E1017; color: #FFFFFF; width: 1280px; height: 800px; overflow: hidden; position: relative; }
       
-      /* Subtle workspace backdrop */
       .desktop-bg { position: absolute; inset: 0; background: radial-gradient(circle at 50% 25%, #161926 0%, #0E1017 100%); }
       .app-window { position: absolute; left: 160px; top: 120px; width: 800px; height: 500px; background: rgba(22, 25, 38, 0.95); border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; box-shadow: 0 24px 60px rgba(0,0,0,0.6); padding: 24px; display: flex; flex-direction: column; gap: 16px; }
       .win-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 12px; }
@@ -69,11 +58,9 @@ app.whenReady().then(async () => {
       .dot { width: 12px; height: 12px; border-radius: 50%; }
       .target-btn { position: absolute; left: 540px; top: 240px; padding: 12px 24px; border-radius: 14px; background: #6C86F5; color: #FFFFFF; font-weight: 600; font-size: 14px; border: none; box-shadow: 0 4px 16px rgba(108,134,245,0.3); display: flex; align-items: center; gap: 8px; }
 
-      /* Companion Character (Bottom Right) */
       .companion-box { position: absolute; right: 40px; bottom: 30px; width: 140px; height: 120px; background: rgba(22,25,38,0.9); border: 1px solid rgba(108,134,245,0.35); border-radius: 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 16px 40px rgba(0,0,0,0.5); }
       .companion-status { font-size: 11px; font-weight: 700; color: #A9BCFF; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
 
-      /* Apple Pill HUD Banner (Zero Glow, Pure Vector Icons) */
       #hud-banner {
         position: absolute;
         top: 20px;
@@ -90,7 +77,6 @@ app.whenReady().then(async () => {
         z-index: 1000;
       }
       
-      /* Authentic Teardrop Cursor */
       #cursor {
         position: absolute;
         left: -100px;
@@ -102,7 +88,6 @@ app.whenReady().then(async () => {
         filter: drop-shadow(0 10px 20px rgba(0,0,0,0.45));
       }
 
-      /* Click Ripple Ring */
       #ripple-ring {
         position: absolute;
         width: 76px;
@@ -115,7 +100,6 @@ app.whenReady().then(async () => {
         z-index: 998;
       }
 
-      /* 6-Star Burst Container */
       #starburst-container {
         position: absolute;
         width: 0;
@@ -124,7 +108,6 @@ app.whenReady().then(async () => {
         z-index: 998;
       }
 
-      /* Research Card matching ReportPanel.swift (Top-Right, 22px continuous radius, #6C86F5 border, NO GLOW) */
       #report-card {
         position: absolute;
         top: 24px;
@@ -271,9 +254,7 @@ app.whenReady().then(async () => {
     </div>
 
     <script>
-      // Cubic-bezier timing function implementation matching TimingCurve.launch
       function cubicBezier(t, x1, y1, x2, y2) {
-        // Simple bisection solver
         let low = 0, high = 1, mid = t;
         for (let i = 0; i < 16; i++) {
           mid = (low + high) / 2;
@@ -301,7 +282,6 @@ app.whenReady().then(async () => {
         const targetX = 640, targetY = 380;
 
         if (t < 2.0) {
-          // 0.0s - 2.0s: IDLE
           faceStatus.textContent = 'Resting';
           hud.style.display = 'none';
           cursor.style.display = 'none';
@@ -312,13 +292,11 @@ app.whenReady().then(async () => {
           pupilL.setAttribute('cx', 41); pupilL.setAttribute('cy', 46);
           pupilR.setAttribute('cx', 65); pupilR.setAttribute('cy', 46);
         } else if (t < 3.5) {
-          // 2.0s - 3.5s: LISTENING
           faceStatus.textContent = 'Listening';
           mouth.setAttribute('d', 'M 46 62 Q 50 67 54 62');
           pupilL.setAttribute('cx', 42); pupilL.setAttribute('cy', 43);
           pupilR.setAttribute('cx', 66); pupilR.setAttribute('cy', 43);
         } else if (t < 5.5) {
-          // 3.5s - 5.5s: THINKING
           faceStatus.textContent = 'Thinking';
           hud.style.display = 'flex';
           const roll = (t - 3.5) * 4;
@@ -327,21 +305,18 @@ app.whenReady().then(async () => {
           pupilR.setAttribute('cx', 62 + Math.cos(roll) * 3);
           pupilR.setAttribute('cy', 44 + Math.sin(roll) * 3);
         } else if (t < 8.0) {
-          // 5.5s - 8.0s: POINTING (Cubic-bezier launch curve)
           faceStatus.textContent = 'Pointing';
           hud.style.display = 'flex';
           cursor.style.display = 'block';
           const progress = (t - 5.5) / 2.5;
           const ease = cubicBezier(progress, 0.42, 0, 0.22, 1);
           
-          // Gentle bowing upward
           const bow = Math.sin(progress * Math.PI) * -35;
           const curX = startX + (targetX - startX) * ease;
           const curY = startY + (targetY - startY) * ease + bow;
           cursor.style.left = curX + 'px';
           cursor.style.top = curY + 'px';
 
-          // Cursor velocity tracking
           const dx = (targetX - startX);
           const dy = (targetY - startY);
           const dist = Math.hypot(dx, dy);
@@ -354,11 +329,9 @@ app.whenReady().then(async () => {
           pupilL.setAttribute('cx', 36); pupilL.setAttribute('cy', 41);
           pupilR.setAttribute('cx', 60); pupilR.setAttribute('cy', 41);
         } else if (t < 9.0) {
-          // 8.0s - 9.0s: CLICK (0.14 depth squish, 650ms ring ripple, 550ms starburst)
           faceStatus.textContent = 'Acting';
           const dt = t - 8.0;
           
-          // Press squish formula from CursorOverlay.swift:319-325
           let squish = 1.0;
           if (dt < 0.12) {
             squish = 1 - 0.14 * Math.sin((dt / 0.12) * Math.PI / 2);
@@ -370,11 +343,9 @@ app.whenReady().then(async () => {
           cursor.style.top = targetY + 'px';
           cursor.style.transform = 'scale(' + squish.toFixed(3) + ', ' + (2 - squish).toFixed(3) + ')';
 
-          // Eye gaze resets to tip
           cPupilL.setAttribute('cx', -1.5); cPupilL.setAttribute('cy', -1.5);
           cPupilR.setAttribute('cx', 16.5); cPupilR.setAttribute('cy', -1.5);
 
-          // Ripple ring (650ms)
           if (dt < 0.65) {
             const ripEase = cubicBezier(dt / 0.65, 0.2, 0.7, 0.3, 1);
             ripple.style.left = targetX + 'px';
@@ -385,7 +356,6 @@ app.whenReady().then(async () => {
             ripple.style.opacity = '0';
           }
 
-          // 6-star particles burst (550ms)
           if (dt < 0.55) {
             const starEase = cubicBezier(dt / 0.55, 0.1, 0.8, 0.3, 1);
             const dist = 46 * starEase;
@@ -404,7 +374,6 @@ app.whenReady().then(async () => {
             starburst.innerHTML = '';
           }
         } else if (t < 10.5) {
-          // 9.0s - 10.5s: POPUP APPEARS (Spring entrance, zero glow)
           faceStatus.textContent = 'Happy';
           cursor.style.transform = 'scale(1)';
           ripple.style.opacity = '0';
@@ -416,11 +385,9 @@ app.whenReady().then(async () => {
           report.style.transform = 'translateY(' + ((1 - repEase) * -18) + 'px)';
           mouth.setAttribute('d', 'M 40 62 Q 50 76 60 62');
         } else if (t < 11.5) {
-          // 10.5s - 11.5s: POPUP DISMISSES
           const disP = (t - 10.5) / 1.0;
           report.style.opacity = Math.max(0, 1 - disP * 2);
         } else {
-          // 11.5s - 12.0s: DONE & STOP
           report.style.display = 'none';
           hud.style.display = 'none';
           cursor.style.display = 'none';
