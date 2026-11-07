@@ -1,5 +1,5 @@
-import { HistoryStore, HistoryRecord, HistoryCheck } from '@bluey/core'
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs'
+import { HistoryStore, HistoryRecord, HistoryCheck } from '@nomin/core'
+import { existsSync, readFileSync, writeFileSync, mkdirSync, copyFileSync } from 'fs'
 import { join, dirname } from 'path'
 import { app } from 'electron'
 
@@ -11,8 +11,8 @@ export class WindowsHistoryStore implements HistoryStore {
       this.filePath = customFilePath
     } else {
       const appData = app ? app.getPath('appData') : process.env.APPDATA || '.'
-      const blueyDir = join(appData, 'Bluey')
-      this.filePath = join(blueyDir, 'history.json')
+      const treyDir = join(appData, 'Trey')
+      this.filePath = join(treyDir, 'history.json')
     }
   }
 
@@ -26,7 +26,19 @@ export class WindowsHistoryStore implements HistoryStore {
   async loadHistory(): Promise<HistoryRecord[]> {
     try {
       if (!existsSync(this.filePath)) {
-        return []
+        // One-time auto-migration from legacy %APPDATA%/Bluey/history.json
+        const appData = app ? app.getPath('appData') : process.env.APPDATA || '.'
+        const legacyPath = join(appData, 'Bluey', 'history.json')
+        if (existsSync(legacyPath)) {
+          this.ensureDir()
+          try {
+            copyFileSync(legacyPath, this.filePath)
+          } catch {
+            // ignore
+          }
+        } else {
+          return []
+        }
       }
       const raw = readFileSync(this.filePath, 'utf8')
       const parsed = JSON.parse(raw)

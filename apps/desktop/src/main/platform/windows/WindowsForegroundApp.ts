@@ -1,7 +1,7 @@
 import { execFile } from 'child_process'
 import { join } from 'path'
 import { promisify } from 'util'
-import type { ForegroundApp, ForegroundAppInfo } from '@bluey/core'
+import type { ForegroundApp, ForegroundAppInfo } from '@nomin/core'
 
 const execFileAsync = promisify(execFile)
 

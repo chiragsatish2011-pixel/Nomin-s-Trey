@@ -127,7 +127,7 @@ export default function App(): React.JSX.Element {
         }}
       />
 
-      {/* 1. AGENTIC TOP-RIGHT RESEARCH REPORT CARD (Riley Brown ReportPanel.swift) */}
+      {/* 1. AGENTIC TOP-RIGHT RESEARCH REPORT PANEL */}
       {report && (
         <div
           onMouseEnter={handleCardMouseEnter}

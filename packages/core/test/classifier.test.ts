@@ -36,16 +36,16 @@ describe('Classifier and NudgeWriter parsing contracts', () => {
   })
 
   it('parses nudge response and extracts valid target_id and quote', () => {
-    const raw = `{"message":"Hey, this doesn't look like building Bluey.","target_id":"L14","target_quote":"Trending news on Twitter"}`
+    const raw = `{"message":"Hey, this doesn't look like building Trey.","target_id":"L14","target_quote":"Trending news on Twitter"}`
     const nudge = NudgeWriter.parseResponse(raw)
 
-    expect(nudge.message).toBe("Hey, this doesn't look like building Bluey.")
+    expect(nudge.message).toBe("Hey, this doesn't look like building Trey.")
     expect(nudge.targetId).toBe('L14')
     expect(nudge.targetQuote).toBe('Trending news on Twitter')
   })
 
   it('falls back to default sentence when message exceeds limits or is malformed', () => {
-    const raw = `{"message":"This message is way way way too long and rambling and full of unnecessary filler words that violate the 18 word limit rule designed for Bluey's gentle speech bubbles to ensure it does not overwhelm the user.","target_id":null,"target_quote":null}`
+    const raw = `{"message":"This message is way way way too long and rambling and full of unnecessary filler words that violate the 18 word limit rule designed for Trey's gentle speech bubbles to ensure it does not overwhelm the user.","target_id":null,"target_quote":null}`
     const nudge = NudgeWriter.parseResponse(raw)
 
     expect(nudge.message).toBe("Are you sure you're on task right now?")

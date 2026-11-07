@@ -13,7 +13,7 @@ export interface CheckResult {
 }
 
 /**
- * NudgePolicy: Pure TypeScript implementation of Bluey's evidence accumulation algorithm.
+ * NudgePolicy: Pure TypeScript implementation of Trey's evidence accumulation algorithm.
  *
  * ## Exact Span Equation:
  * - A check is valid only if valid=true, latencySec <= maxCheckLatencySec, choice='off_task',

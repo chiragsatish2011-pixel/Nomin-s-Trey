@@ -6,10 +6,15 @@ import {
 
 export class SessionEngine {
   private session: FocusSession | null = null
+  private endTime = 0
+  private remainingAtPause = 0
 
   constructor(session?: FocusSession) {
     if (session) {
       this.session = session
+      this.remainingAtPause = Math.max(0, session.duration - session.elapsed)
+      const rate = session.developerMode ? 4 : 1
+      this.endTime = Date.now() + (this.remainingAtPause / rate) * 1000
     }
   }
 
@@ -20,17 +25,17 @@ export class SessionEngine {
     return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
   }
 
-  start(task: string, durationSeconds = 1800, developerMode = false): FocusSession {
+  start(task: string, durationSeconds = 1800, developerMode = false, now = Date.now()): FocusSession {
     const trimmedTask = task.trim().slice(0, 500)
     // Clamp duration between 60s (1 min) and 14400s (240 min)
     const clampedDuration = Math.min(14400, Math.max(60, durationSeconds))
 
     const checkInterval = developerMode ? 10 : 30
     this.session = {
-      id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `session-${Date.now()}`,
+      id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `session-${now}`,
       task: trimmedTask,
       duration: clampedDuration,
-      startedAt: Date.now(),
+      startedAt: now,
       elapsed: 0,
       status: 'running',
       detail: `First check in ${checkInterval} seconds`,
@@ -39,6 +44,9 @@ export class SessionEngine {
       usedDeveloperMode: developerMode,
       realElapsed: 0
     }
+    const rate = developerMode ? 4 : 1
+    this.remainingAtPause = clampedDuration
+    this.endTime = now + (clampedDuration / rate) * 1000
     return this.getSession()!
   }
 
@@ -87,6 +95,27 @@ export class SessionEngine {
     return Math.max(0, this.session.duration - this.session.elapsed)
   }
 
+  get endTimeMs(): number {
+    return this.endTime
+  }
+
+  syncClock(now = Date.now()): void {
+    if (!this.session || this.session.status !== 'running') return
+    const rate = this.clockRate
+    const remainingFocusSec = Math.max(0, (this.endTime - now) / 1000) * rate
+    const clampedRemaining = Math.min(this.session.duration, remainingFocusSec)
+
+    const elapsedFocusSec = Math.max(0, this.session.duration - clampedRemaining)
+    this.session.elapsed = elapsedFocusSec
+    this.session.realElapsed = elapsedFocusSec / rate
+    this.remainingAtPause = clampedRemaining
+
+    if (clampedRemaining <= 0) {
+      this.session.status = 'ended'
+      this.session.detail = "Time's up. Lovely bit of focus."
+    }
+  }
+
   advance(seconds: number): void {
     if (!this.session || this.session.status !== 'running') return
     if (!Number.isFinite(seconds) || seconds <= 0) return
@@ -96,6 +125,8 @@ export class SessionEngine {
 
     this.session.realElapsed = this.realActiveElapsed + Math.min(seconds, remainingFocus / rate)
     this.session.elapsed = Math.min(this.session.duration, this.session.elapsed + seconds * rate)
+    this.remainingAtPause = Math.max(0, this.session.duration - this.session.elapsed)
+    this.endTime = Date.now() + (this.remainingAtPause / rate) * 1000
 
     if (this.session.elapsed >= this.session.duration) {
       this.session.status = 'ended'
@@ -103,13 +134,14 @@ export class SessionEngine {
     }
   }
 
-  pause(reason = 'Paused'): void {
+  pause(reason = 'Paused', now = Date.now()): void {
     if (!this.session || this.session.status !== 'running') return
     this.session.status = 'paused'
     this.session.detail = reason
+    this.remainingAtPause = Math.max(0, this.session.duration - this.session.elapsed)
 
     const pauseCheck: FocusCheck = {
-      id: `check-${Date.now()}-${this.session.checks.length}`,
+      id: `check-${now}-${this.session.checks.length}`,
       elapsed: this.session.elapsed,
       activity: 'paused',
       probability: 0,
@@ -119,18 +151,24 @@ export class SessionEngine {
     this.session.checks.push(pauseCheck)
   }
 
-  resume(): void {
+  resume(now = Date.now()): void {
     if (!this.session || this.session.status !== 'paused') return
     this.session.status = 'running'
+    const rate = this.clockRate
+    this.endTime = now + (this.remainingAtPause / rate) * 1000
     this.session.detail = `Resumed. Next check in ${this.checkInterval} seconds`
   }
 
-  setDeveloperMode(enabled: boolean): void {
+  setDeveloperMode(enabled: boolean, now = Date.now()): void {
     if (!this.session) return
     this.session.developerMode = enabled
     if (enabled) {
       this.session.usedDeveloperMode = true
     }
+    const currentRemaining = Math.max(0, this.session.duration - this.session.elapsed)
+    this.remainingAtPause = currentRemaining
+    const newRate = this.clockRate
+    this.endTime = now + (currentRemaining / newRate) * 1000
   }
 
   end(): void {

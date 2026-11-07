@@ -2,7 +2,7 @@ import { windowsScreenCapture } from './platform/windows/WindowsScreenCapture'
 import { windowsOcr } from './platform/windows/WindowsOcr'
 import { windowsForegroundApp } from './platform/windows/WindowsForegroundApp'
 import { windowsIdleMonitor } from './platform/windows/WindowsIdleMonitor'
-import type { OcrResult, ForegroundAppInfo, CaptureResult } from '@bluey/core'
+import type { OcrResult, ForegroundAppInfo, CaptureResult } from '@nomin/core'
 
 export interface PerceptionSnapshot {
   capture: CaptureResult

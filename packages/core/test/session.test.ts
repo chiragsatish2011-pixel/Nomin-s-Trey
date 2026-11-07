@@ -1,10 +1,10 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { SessionEngine } from '../src/session/SessionEngine.js'
 
 describe('SessionEngine & FocusClock logic', () => {
   it('developer clock runs 4x faster and pause still freezes it (matching FocusTests.swift)', () => {
     const engine = new SessionEngine()
-    engine.start('Test Bluey', 60, true)
+    engine.start('Test Trey', 60, true)
 
     expect(engine.checkInterval).toBe(10)
     expect(engine.observationDuration).toBe(40)
@@ -105,5 +105,97 @@ describe('SessionEngine & FocusClock logic', () => {
     expect(snapshot?.checks).toHaveLength(0)
     expect(engine.getSession()?.checks).toHaveLength(1)
     expect(engine.getSession()?.detail).toBe('Off task · checking again before nudging')
+  })
+
+  describe('Timestamp-based monotonic clock & fake timers', () => {
+    beforeEach(() => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date(2026, 0, 1, 12, 0, 0))
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('samples at 250ms interval with NO skipped second values over 10 minutes', () => {
+      const engine = new SessionEngine()
+      const totalSeconds = 600 // 10 minutes
+      engine.start('10 min focus test', totalSeconds, false, Date.now())
+
+      const seenSeconds = new Set<number>()
+      const totalTicks = totalSeconds * 4 // 250ms ticks -> 4 ticks per second
+
+      seenSeconds.add(Math.ceil(engine.remaining))
+
+      for (let i = 0; i < totalTicks; i++) {
+        vi.advanceTimersByTime(250)
+        engine.syncClock(Date.now())
+        seenSeconds.add(Math.ceil(engine.remaining))
+      }
+
+      // Must have encountered every single integer second from 600 down to 0
+      for (let sec = totalSeconds; sec >= 0; sec--) {
+        expect(seenSeconds.has(sec)).toBe(true)
+      }
+      expect(seenSeconds.size).toBe(totalSeconds + 1)
+      expect(engine.status).toBe('ended')
+    })
+
+    it('freezes elapsed time exactly on pause and resumes accurately', () => {
+      const engine = new SessionEngine()
+      engine.start('Pause freeze test', 600, false, Date.now())
+
+      // Run for 10 seconds (40 ticks at 250ms)
+      for (let i = 0; i < 40; i++) {
+        vi.advanceTimersByTime(250)
+        engine.syncClock(Date.now())
+      }
+      expect(Math.round(engine.remaining)).toBe(590)
+      expect(Math.round(engine.getSession()?.elapsed ?? 0)).toBe(10)
+
+      // Pause for 10 minutes (600,000 ms)
+      engine.pause('User stepped away', Date.now())
+      vi.advanceTimersByTime(600_000)
+      engine.syncClock(Date.now())
+
+      // Elapsed must remain frozen at exactly 10s
+      expect(Math.round(engine.remaining)).toBe(590)
+      expect(Math.round(engine.getSession()?.elapsed ?? 0)).toBe(10)
+      expect(engine.status).toBe('paused')
+
+      // Resume and run for another 10 seconds (40 ticks)
+      engine.resume(Date.now())
+      for (let i = 0; i < 40; i++) {
+        vi.advanceTimersByTime(250)
+        engine.syncClock(Date.now())
+      }
+      expect(Math.round(engine.remaining)).toBe(580)
+      expect(Math.round(engine.getSession()?.elapsed ?? 0)).toBe(20)
+      expect(Math.round(engine.realActiveElapsed)).toBe(20)
+    })
+
+    it('catches up accurately without drifting after a simulated 5-second main-thread stall', () => {
+      const engine = new SessionEngine()
+      engine.start('Stall resilience test', 600, false, Date.now())
+
+      // Run normally for 4 seconds (16 ticks)
+      for (let i = 0; i < 16; i++) {
+        vi.advanceTimersByTime(250)
+        engine.syncClock(Date.now())
+      }
+      expect(Math.round(engine.remaining)).toBe(596)
+
+      // Simulate a 5-second thread stall (e.g. heavy OCR / screen capture lock)
+      // Time advances 5000ms with zero ticks running during the stall
+      vi.advanceTimersByTime(5000)
+
+      // Next tick fires after the stall
+      engine.syncClock(Date.now())
+
+      // Remaining must immediately reflect the 4s + 5s = 9s elapsed -> 591s
+      expect(Math.round(engine.remaining)).toBe(591)
+      expect(Math.round(engine.getSession()?.elapsed ?? 0)).toBe(9)
+      expect(SessionEngine.formatClock(engine.remaining)).toBe('09:51')
+    })
   })
 })

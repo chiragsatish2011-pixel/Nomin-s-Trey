@@ -30,7 +30,7 @@ import { setupTray, updateTrayState, setExpression } from './tray'
 import { coordinator } from './coordinator'
 import { perceptionManager } from './perception'
 import { windowsPushToTalk } from './platform/windows/WindowsPushToTalk'
-import { TaskParser } from '@bluey/core'
+import { TaskParser } from '@nomin/core'
 import { loadSettings, saveSettings, AppSettings } from './store'
 import { configureAutoUpdates } from './updates'
 
@@ -44,7 +44,7 @@ if (!gotTheLock) {
   })
 
   app.whenReady().then(async () => {
-    electronApp.setAppUserModelId('co.visionairy.trey')
+    electronApp.setAppUserModelId('com.nomin.trey')
     await coordinator.init()
 
     app.on('browser-window-created', (_, window) => {
@@ -74,7 +74,7 @@ if (!gotTheLock) {
     configureAutoUpdates()
 
     // Windows powerMonitor events: lock-screen & suspend pause the session
-    // Unlocking NEVER auto-resumes (strictly matches Bluey rules)
+    // Unlocking NEVER auto-resumes (strict focus safety policy)
     powerMonitor.on('lock-screen', () => {
       coordinator.pause('PC locked. Resume when you are ready.')
     })

@@ -1,11 +1,13 @@
 {
-  "name": "@bluey/core",
-  "version": "0.1.0",
+  "name": "@nomin/core",
+  "version": "0.2.0",
   "private": true,
-  "description": "Portable core logic for Bluey focus companion",
+  "description": "Portable core logic for Trey desktop focus companion by Nomin",
   "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
+  "author": "Chirag S <chiragsatish2011-pixel@users.noreply.github.com>",
+  "license": "MIT",
   "scripts": {
     "build": "tsc",
     "test": "vitest run",

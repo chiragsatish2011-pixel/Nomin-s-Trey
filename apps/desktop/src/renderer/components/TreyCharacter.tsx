@@ -47,7 +47,7 @@ export const TreyCharacter: React.FC<TreyCharacterProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
 
-  // Springs matching Riley Brown's FaceView.swift
+  // Harmonic physical springs for gaze and expression motion
   const springs = useRef({
     gazeX: new Spring(0, 260, 0.82),
     gazeY: new Spring(0, 260, 0.82),
@@ -453,7 +453,7 @@ export const TreyCharacter: React.FC<TreyCharacterProps> = ({
           ctx.lineCap = 'round'
           ctx.stroke()
         } else {
-          // Open googly eyes
+          // Open expressive eyes
           const open = Math.max(0.06, 1 - closed) * squash
           const eyeR = 88
           const eyeRy = eyeR * open

@@ -1,5 +1,5 @@
 import { powerMonitor } from 'electron'
-import type { IdleMonitor } from '@bluey/core'
+import type { IdleMonitor } from '@nomin/core'
 
 export class WindowsIdleMonitor implements IdleMonitor {
   async getIdleSeconds(): Promise<number> {

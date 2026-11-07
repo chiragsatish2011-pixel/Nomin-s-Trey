@@ -1,7 +1,7 @@
 import { safeStorage, app } from 'electron'
 import { join } from 'path'
 import { existsSync, readFileSync, writeFileSync, mkdirSync, unlinkSync } from 'fs'
-import type { SecretStore } from '@bluey/core'
+import type { SecretStore } from '@nomin/core'
 
 export class WindowsSecretStore implements SecretStore {
   private getCandidatePaths(): string[] {
@@ -14,8 +14,9 @@ export class WindowsSecretStore implements SecretStore {
 
     try {
       const appData = app.getPath('appData')
-      paths.push(join(appData, '@bluey', 'desktop', 'secrets.enc'))
       paths.push(join(appData, 'Trey', 'secrets.enc'))
+      paths.push(join(appData, '@nomin', 'desktop', 'secrets.enc'))
+      paths.push(join(appData, '@bluey', 'desktop', 'secrets.enc'))
       paths.push(join(appData, 'bluey-by-riley', 'secrets.enc'))
     } catch {
       // fallback

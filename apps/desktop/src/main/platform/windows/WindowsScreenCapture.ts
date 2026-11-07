@@ -1,5 +1,5 @@
 import { desktopCapturer, screen } from 'electron'
-import type { ScreenCapture, CaptureResult } from '@bluey/core'
+import type { ScreenCapture, CaptureResult } from '@nomin/core'
 
 export class WindowsScreenCapture implements ScreenCapture {
   async captureDisplay(options?: { primaryOnly?: boolean }): Promise<CaptureResult> {

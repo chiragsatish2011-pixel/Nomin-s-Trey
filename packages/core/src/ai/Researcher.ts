@@ -72,12 +72,33 @@ Do not use markdown inside paragraphs (no asterisks, headings, bullet symbols, o
         messages.push({ role: 'user', content: promptText })
       }
 
-      const res = await this.client.complete(messages, {
-        temperature: 0.2,
-        max_tokens: 1536,
-        response_format: { type: 'json_object' },
-        timeoutMs: 60000
-      })
+      let res: { text: string; modelUsed: string }
+      try {
+        res = await this.client.complete(messages, {
+          temperature: 0.2,
+          max_tokens: 2048,
+          response_format: { type: 'json_object' },
+          timeoutMs: 30000
+        })
+      } catch (err: unknown) {
+        if (jpegBase64) {
+          // If multimodal screening rejected the screenshot (e.g. HTTP 422), fall back to pure text
+          res = await this.client.complete(
+            [
+              messages[0],
+              { role: 'user', content: promptText }
+            ],
+            {
+              temperature: 0.2,
+              max_tokens: 2048,
+              response_format: { type: 'json_object' },
+              timeoutMs: 30000
+            }
+          )
+        } else {
+          throw err
+        }
+      }
 
       try {
         let cleaned = res.text.trim()

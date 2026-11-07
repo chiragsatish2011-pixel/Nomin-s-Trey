@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { FocusActivitySchema, NotImplementedError } from '../src/index.js'
 
-describe('@bluey/core environment and schema sanity', () => {
+describe('@nomin/core environment and schema sanity', () => {
   it('runs in plain Node without Electron or DOM window', () => {
     expect(typeof process).toBe('object')
     expect(typeof (globalThis as Record<string, unknown>).window).toBe('undefined')

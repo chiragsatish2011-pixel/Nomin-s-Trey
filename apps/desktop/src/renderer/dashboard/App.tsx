@@ -125,7 +125,7 @@ export interface DashboardAPIClient {
   closeWindow: () => Promise<void>
 }
 
-// Apple-style Interactive Timeline Component (Faithful to Riley Brown's FocusTimeline)
+// Apple-style Interactive Focus Timeline Component
 function TimelineBar({
   checks,
   onSelectCheck
@@ -568,16 +568,18 @@ export default function App(): React.JSX.Element {
           {developerMode && (
             <div
               style={{
-                padding: '3px 8px',
+                padding: '3px 10px',
                 borderRadius: 980,
-                background: 'rgba(108, 134, 245, 0.15)',
-                color: '#A9BCFF',
+                background: 'rgba(239, 68, 68, 0.18)',
+                color: '#fca5a5',
                 fontSize: 10,
-                fontWeight: 600,
-                border: '1px solid rgba(108, 134, 245, 0.3)'
+                fontWeight: 700,
+                border: '1px solid rgba(239, 68, 68, 0.4)',
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase'
               }}
             >
-              4x Clock · 10s checks
+              Developer Mode (4x Clock · 10s checks)
             </div>
           )}
 

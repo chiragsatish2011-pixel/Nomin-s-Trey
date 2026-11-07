@@ -1,5 +1,5 @@
 import { createWorker, Worker } from 'tesseract.js'
-import type { Ocr, OcrResult, OcrLine, OcrTarget } from '@bluey/core'
+import type { Ocr, OcrResult, OcrLine, OcrTarget } from '@nomin/core'
 
 interface TesseractBBox {
   x0: number

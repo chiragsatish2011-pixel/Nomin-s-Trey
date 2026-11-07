@@ -7,18 +7,18 @@ Welcome to **Trey for Windows**, your desktop focus companion ported from the or
 ## 1. System Requirements & Setup
 
 - **Operating System:** Windows 10 or Windows 11 (64-bit).
-- **AI Backend:** NVIDIA NIM API Key (obtain from [build.nvidia.com](https://build.nvidia.com)).
+- **AI Backend:** Universal API Key support (NVIDIA NIM, OpenAI, Groq, OpenRouter, or custom).
 - **Permissions:**
   - Screen capture (Windows Desktop Duplication / capturer API).
   - Microphone access (for optional Push-to-Talk voice commands).
-  - Global hotkeys (`Ctrl+2` for emergency pause, `Ctrl+1` for push-to-talk).
+  - Global hotkeys (`K` or `Ctrl+K` for emergency pause, `J` or `Ctrl+J` for push-to-talk).
 
 ### First-Time Configuration
 1. Launch **Trey**.
-2. Trey appears on your desktop, and a blueberry icon sits in your Windows System Tray (notification area).
+2. Trey appears on your desktop, and an icon sits in your Windows System Tray (notification area).
 3. Open the **Dashboard** (double-click the tray icon or choose **Open Dashboard** from the tray menu).
 4. Navigate to the **⚙️ Settings** tab.
-5. Paste your NVIDIA NIM API key into the input field and click **Save Key**.
+5. Paste your API key into the input field and click **Save Key**.
    - Your key is immediately encrypted using Windows DPAPI (`CryptProtectData` via Electron `safeStorage`). It is never stored in plain text and never exposed to the web renderers.
 
 ---
@@ -32,7 +32,7 @@ Welcome to **Trey for Windows**, your desktop focus companion ported from the or
 4. Click **Start Focus Session**.
 
 ### Option B: Push-to-Talk Voice
-1. Press and hold **`Ctrl + 1`** anywhere in Windows.
+1. Press and hold **`J`** (or `Ctrl+J` / `Alt+J`) anywhere in Windows.
 2. Trey's face will change to the **listening** expression.
 3. Speak naturally, e.g.:
    - *"I'm writing the documentation for 45 minutes"*

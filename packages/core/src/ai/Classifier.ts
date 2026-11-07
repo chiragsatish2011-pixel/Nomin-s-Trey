@@ -80,6 +80,18 @@ Rules to strictly follow:
     const start = cleaned.indexOf('{')
     const end = cleaned.lastIndexOf('}')
     if (start === -1 || end === -1 || end <= start) {
+      // Defensive fallback: inspect reasoning/raw text for choice
+      const match = raw.match(/"choice"\s*:\s*"(on_task|off_task|uncertain)"/i)
+      if (match) {
+        const choice = match[1].toLowerCase() as ActivityChoice
+        return ClassifierDecisionSchema.parse({
+          choice,
+          p_off_task: choice === 'off_task' ? 0.95 : 0.05,
+          p_on_task: choice === 'on_task' ? 0.95 : 0.05,
+          p_uncertain: choice === 'uncertain' ? 0.6 : 0.0,
+          confidence: 0.85
+        })
+      }
       throw new Error('NIM returned a response without the required JSON object.')
     }
 
@@ -107,12 +119,35 @@ Rules to strictly follow:
 
     try {
       const response = await this.governor.schedule('classification', async () => {
-        return this.client.complete(messages, {
-          temperature: 0,
-          max_tokens: 1024,
-          response_format: { type: 'json_object' },
-          timeoutMs: 45000
-        })
+        try {
+          return await this.client.complete(messages, {
+            temperature: 0,
+            max_tokens: 1536,
+            response_format: { type: 'json_object' },
+            timeoutMs: 25000
+          })
+        } catch {
+          // If multimodal vision request was rejected (e.g. HTTP 422 media screened) or stalled,
+          // gracefully fall back to text-only classification using OCR & foreground app
+          const textOnlyUserText = [
+            `Task declared by user: ${input.task}`,
+            `Clock elapsed: ${Math.round(input.elapsed)}s`,
+            `Frontmost app: ${input.foregroundApp || 'unknown'}`,
+            `Screen OCR text: ${input.screenText ? input.screenText.slice(0, 8000) : '(none)'}`
+          ].join('\n')
+          return await this.client.complete(
+            [
+              messages[0],
+              { role: 'user', content: textOnlyUserText }
+            ],
+            {
+              temperature: 0,
+              max_tokens: 1024,
+              response_format: { type: 'json_object' },
+              timeoutMs: 20000
+            }
+          )
+        }
       })
 
       const latencySec = (Date.now() - startTime) / 1000

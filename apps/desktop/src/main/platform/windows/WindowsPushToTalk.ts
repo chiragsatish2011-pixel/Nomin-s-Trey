@@ -1,5 +1,5 @@
 import { globalShortcut } from 'electron'
-import type { PushToTalk, PushToTalkListener } from '@bluey/core'
+import type { PushToTalk, PushToTalkListener } from '@nomin/core'
 
 export interface ExtendedPushToTalkListener extends PushToTalkListener {
   onEmergency?: () => void

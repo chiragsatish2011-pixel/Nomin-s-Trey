@@ -8,7 +8,7 @@ import {
   CoordinateMath,
   HistoryRecord,
   ResearchReport
-} from '@bluey/core'
+} from '@nomin/core'
 import { screen } from 'electron'
 import { exec } from 'child_process'
 import { promisify } from 'util'
@@ -33,7 +33,7 @@ function detectDistraction(
   ocrLines: Array<{ line: { id: string; text: string; rect: { x: number; y: number; width: number; height: number } } }>
 ): DistractionDetection {
   const normTask = declaredTask.toLowerCase()
-  const isWorkTask = /coding|code|programming|dev|development|software|engineer|study|work|typing|writing|reading|research|bluey|trey|task|project/.test(normTask)
+  const isWorkTask = /coding|code|programming|dev|development|software|engineer|study|work|typing|writing|reading|research|nomin|trey|task|project/.test(normTask)
 
   if (!isWorkTask) {
     return { isDistraction: false }
@@ -88,7 +88,8 @@ export class FocusCoordinator {
 
   constructor() {
     const settings = loadSettings()
-    this.developerMode = settings.developerMode ?? false
+    // Requirement 5: Developer Mode must default to OFF and never persist across restarts
+    this.developerMode = false
     this.policy = new NudgePolicy({
       developerMode: this.developerMode,
       maxCheckLatencySec: settings.maxCheckLatencySec ?? 45
@@ -246,7 +247,8 @@ export class FocusCoordinator {
     this.lastCheckElapsed = 0
 
     if (this.tickInterval) clearInterval(this.tickInterval)
-    this.tickInterval = setInterval(() => this.tick(), 1000)
+    // Requirement 3: 250ms interval so display never skips a second
+    this.tickInterval = setInterval(() => this.tick(), 250)
 
     this.publishSync()
     updateTrayState(this)
@@ -287,7 +289,7 @@ export class FocusCoordinator {
 
   setDeveloperMode(enabled: boolean): string {
     this.developerMode = enabled
-    saveSettings({ developerMode: enabled })
+    // Requirement 5: Never persist developer mode across restarts unless explicitly asked
     this.engine.setDeveloperMode(enabled)
     this.policy.setDeveloperMode(enabled)
     this.publishSync()
@@ -325,7 +327,8 @@ export class FocusCoordinator {
     const initialStatus = this.engine.status
     if (initialStatus !== 'running') return
 
-    this.engine.advance(1)
+    // Requirement 3: timestamp-based monotonic clock computation, never decrements fixed number
+    this.engine.syncClock(Date.now())
     this.publishSync()
     updateTrayState(this)
 

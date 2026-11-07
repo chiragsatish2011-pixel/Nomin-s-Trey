@@ -266,25 +266,36 @@ export class NimClient {
       const data = (await res.json()) as { data?: Array<{ id: string }> }
       const modelList = (data.data || []).map((m) => m.id)
 
-      // Filter vision models
+      // Filter vision models (exclude non-chat models: embeddings, retrievers, detectors, reward, and retired models)
       const visionKeywords = /(vision|vl|image|gpt-4o|claude-3-5|gemini-2|pixtral|qwen-vl|nemotron.*vl)/i
       const discoveredVision = modelList.filter((id) => {
-        if (id.includes('llama-3.2-11b') && baseUrl.includes('nvidia.com')) {
-          return false // NVIDIA retired 11b EOL
+        if (
+          id.includes('embed') ||
+          id.includes('retriever') ||
+          id.includes('detector') ||
+          id.includes('reward') ||
+          id.includes('safety')
+        ) {
+          return false // Non-conversational or safety/embedding models cannot chat
+        }
+        if (
+          (id.includes('llama-3.2-11b') || id.includes('llama-3.2-90b')) &&
+          baseUrl.includes('nvidia.com')
+        ) {
+          return false // NVIDIA retired 11b EOL and 90b vision stalls indefinitely
         }
         return visionKeywords.test(id)
       })
 
-      // Prioritize known top performers
+      // Prioritize known top performers verified for rapid interactive response
       let bestVision = detected.defaultVisionModels[0]
       if (discoveredVision.length > 0) {
         // Look for exact matches in priority order
         const preferred = [
           'gpt-4o',
           'nvidia/nemotron-3.5-super-vl-120b-a12b',
-          'gpt-4o-mini',
           'nvidia/nemotron-3.5-lightning-30b-a3b',
-          'meta/llama-3.2-90b-vision-instruct',
+          'gpt-4o-mini',
           'llama-3.2-11b-vision-preview'
         ]
         const topMatch = preferred.find((p) => discoveredVision.includes(p))
@@ -292,7 +303,16 @@ export class NimClient {
       }
 
       const fallbacks = discoveredVision.filter((m) => m !== bestVision)
-      const effectiveFallbacks = fallbacks.length > 0 ? fallbacks : detected.defaultVisionModels.filter((m) => m !== bestVision)
+      const effectiveFallbacks = (
+        fallbacks.length > 0
+          ? fallbacks
+          : detected.defaultVisionModels.filter((m) => m !== bestVision)
+      ).filter(
+        (m) =>
+          !m.includes('llama-3.2-90b') &&
+          !m.includes('embed') &&
+          !m.includes('retriever')
+      )
 
       // Text reasoning model
       const textKeywords = /(instruct|chat|turbo|mini|versatile)/i
@@ -421,7 +441,8 @@ export class NimClient {
 
       try {
         const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), options?.timeoutMs || 60000)
+        const effectiveTimeout = options?.timeoutMs || 25000
+        const timeoutId = setTimeout(() => controller.abort(), effectiveTimeout)
 
         const payload: Record<string, unknown> = {
           model: currentModel,
@@ -459,7 +480,7 @@ export class NimClient {
           const err = new Error(`AI chat completion failed with HTTP ${res.status}`) as Error & { status: number }
           err.status = res.status
           if (
-            (res.status === 400 || res.status === 404 || res.status === 410 || res.status >= 500) &&
+            (res.status === 400 || res.status === 404 || res.status === 410 || res.status === 422 || res.status >= 500) &&
             attempt < modelsToTry.length - 1
           ) {
             lastError = err
@@ -479,15 +500,26 @@ export class NimClient {
         let text = (msg?.content || '').trim()
         if (!text && msg?.reasoning_content) {
           text = msg.reasoning_content.trim()
+        } else if (text && !text.includes('{') && msg?.reasoning_content && msg.reasoning_content.includes('{')) {
+          // If reasoning contains JSON that was omitted from content
+          const rStart = msg.reasoning_content.indexOf('{')
+          const rEnd = msg.reasoning_content.lastIndexOf('}')
+          if (rStart !== -1 && rEnd > rStart) {
+            text = msg.reasoning_content.slice(rStart, rEnd + 1).trim()
+          }
         }
         return { text, modelUsed: currentModel }
       } catch (err: unknown) {
         lastError = err
         const error = err as { status?: number; name?: string }
+        const isAbort =
+          error?.name === 'AbortError' ||
+          (err instanceof Error && err.message.toLowerCase().includes('abort'))
         if (
-          (error?.name === 'AbortError' ||
+          (isAbort ||
             error?.status === 400 ||
             error?.status === 404 ||
+            error?.status === 422 ||
             (error?.status && error.status >= 500)) &&
           attempt < modelsToTry.length - 1
         ) {

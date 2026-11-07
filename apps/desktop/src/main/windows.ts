@@ -137,6 +137,7 @@ export function createFaceWindow(): BrowserWindow {
     hasShadow: false,
     webPreferences: {
       preload: join(__dirname, '../preload/face.js'),
+      backgroundThrottling: false,
       sandbox: false,
       contextIsolation: true,
       nodeIntegration: false
@@ -219,6 +220,7 @@ export function createOverlayWindow(): BrowserWindow {
     focusable: false,
     webPreferences: {
       preload: join(__dirname, '../preload/overlay.js'),
+      backgroundThrottling: false,
       sandbox: false,
       contextIsolation: true,
       nodeIntegration: false
@@ -271,6 +273,7 @@ export function createDashboardWindow(): BrowserWindow {
     backgroundColor: '#000000',
     webPreferences: {
       preload: join(__dirname, '../preload/dashboard.js'),
+      backgroundThrottling: false,
       sandbox: false,
       contextIsolation: true,
       nodeIntegration: false

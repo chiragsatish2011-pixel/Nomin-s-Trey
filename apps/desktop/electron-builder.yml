@@ -1,4 +1,4 @@
-appId: co.visionairy.trey
+appId: com.nomin.trey
 productName: Trey
 electronVersion: 33.4.11
 npmRebuild: false
