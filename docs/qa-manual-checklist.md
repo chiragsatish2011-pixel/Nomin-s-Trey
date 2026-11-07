@@ -1,7 +1,7 @@
 # Trey Mobile Companion — QA Manual & Integration Test Checklist
 
 **Product:** Trey by Chirag S / The Nomin Company (`com.nomin.trey`)  
-**Version:** v0.2.0  
+**Version:** v0.2.1  
 **Date:** March 2026  
 **Tester / Lead:** Chirag S / Autonomous Build Agent  
 

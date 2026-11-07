@@ -14,12 +14,12 @@ Trey is an intelligent desktop focus companion and mobile copilot. Trey sits on 
 
 Download the latest official releases for Windows and Android from the [GitHub Releases Page](https://github.com/chiragsatish2011-pixel/Nomin-s-Trey/releases):
 
-- **Windows Desktop:** `Trey-Setup-0.2.0.exe` (Windows 10 / 11 64-bit installer)
-- **Android Companion App:** `trey-companion-v0.2.0.apk` (Android 8.0+ / API 24+)
+- **Windows Desktop:** `Trey-Setup-0.2.1.exe` (Windows 10 / 11 64-bit installer)
+- **Android Companion App:** `trey-companion-v0.2.1.apk` (Android 8.0+ / API 24+)
 - **Verification:** Checksums published in `SHA256SUMS.txt`
 
 ### Android Installation Steps
-1. Download `trey-companion-v0.2.0.apk` onto your Android phone.
+1. Download `trey-companion-v0.2.1.apk` onto your Android phone.
 2. Open the downloaded file. When prompted by Android, tap **Settings** and toggle **"Allow installation from this source"**.
 3. Tap **Install** to complete the installation.
 
