@@ -1,6 +1,6 @@
 {
   "name": "@nomin/core",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "private": true,
   "description": "Portable core logic for Trey desktop focus companion by Nomin",
   "type": "module",

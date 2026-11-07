@@ -59,6 +59,7 @@ export default [
       '.wrap/**',
       '.gsd/**',
       'scripts/**',
+      'scratch/**',
       'apps/mobile/android/**'
     ]
   }

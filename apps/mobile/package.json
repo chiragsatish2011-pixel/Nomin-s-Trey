@@ -1,6 +1,6 @@
 {
   "name": "@nomin/mobile",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "private": true,
   "description": "Trey Android Companion & Standalone Focus App by Nomin",
   "type": "module",
