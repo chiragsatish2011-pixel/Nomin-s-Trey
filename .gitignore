@@ -33,3 +33,7 @@ release-dist/
 apps/mobile/android/build/
 apps/mobile/android/app/build/
 apps/mobile/android/.gradle/
+
+*.exe
+test_lock_check/
+test_rec_frames/

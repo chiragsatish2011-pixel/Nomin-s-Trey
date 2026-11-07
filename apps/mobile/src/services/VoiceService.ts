@@ -3,8 +3,8 @@
  * Company: Nomin
  * Copyright (c) 2026 Nomin / Chirag S
  *
- * Procedural Audio Synthesizer & Speech Recognition Service for Trey Mobile.
- * Implements Bluey-inspired pentatonic cartoon chirps and on-device STT/TTS.
+ * Procedural Audio Synthesizer, Haptic Feedback & Speech Service for Trey Mobile.
+ * Implements Bluey-inspired pentatonic cartoon chirps and tactile vibrations.
  */
 
 // Pentatonic scale: C5 to E6
@@ -48,9 +48,63 @@ export class VoiceService {
   private audioCtx: AudioContext | null = null
   private recognition: ISpeechRecognition | null = null
   private isListening = false
+  private volume = 1.0
+
+  constructor() {
+    try {
+      const savedVol = localStorage.getItem('trey_chirp_volume')
+      if (savedVol !== null) {
+        this.volume = parseFloat(savedVol) || 1.0
+      }
+    } catch {
+      this.volume = 1.0
+    }
+  }
+
+  setVolume(vol: number): void {
+    this.volume = Math.max(0, Math.min(1, vol))
+    try {
+      localStorage.setItem('trey_chirp_volume', String(this.volume))
+    } catch {
+      // ignore localStorage errors in sandboxed webviews
+    }
+  }
+
+  getVolume(): number {
+    return this.volume
+  }
+
+  /**
+   * Tactile Haptic Vibration Feedback for physical touch responses
+   */
+  triggerHaptic(type: 'hold' | 'release' | 'tap' | 'alert' = 'tap'): void {
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+      try {
+        switch (type) {
+          case 'hold':
+            navigator.vibrate([35])
+            break
+          case 'release':
+            navigator.vibrate([20])
+            break
+          case 'tap':
+            navigator.vibrate([15])
+            break
+          case 'alert':
+            navigator.vibrate([40, 60, 40])
+            break
+        }
+      } catch {
+        // ignore vibration unsupported errors
+      }
+    }
+  }
 
   private getAudioContext(): AudioContext {
     if (!this.audioCtx) {
+      if (typeof window === 'undefined') {
+        throw new Error('Web Audio API not supported in non-browser environment')
+      }
       const AudioContextClass = window.AudioContext || window.webkitAudioContext
       if (!AudioContextClass) {
         throw new Error('Web Audio API not supported')
@@ -68,6 +122,7 @@ export class VoiceService {
    * Zero disk files required; runs 100% offline.
    */
   playChirp(notesCount = 3, mood: 'happy' | 'alert' | 'curious' = 'happy'): void {
+    if (this.volume <= 0.01) return
     try {
       const ctx = this.getAudioContext()
       const now = ctx.currentTime
@@ -82,7 +137,7 @@ export class VoiceService {
       const notes = baseNotes.slice(0, notesCount)
 
       notes.forEach((freq, idx) => {
-        const startTime = now + idx * 0.09
+        const startTime = now + idx * 0.085
         const duration = 0.08
 
         // Fundamental oscillator
@@ -99,13 +154,13 @@ export class VoiceService {
 
         const gainNode = ctx.createGain()
         gainNode.gain.setValueAtTime(0.001, startTime)
-        // Fast attack
-        gainNode.gain.linearRampToValueAtTime(0.18, startTime + 0.008)
+        // Fast attack scaled by volume
+        gainNode.gain.linearRampToValueAtTime(0.2 * this.volume, startTime + 0.008)
         // Exponential decay
         gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration)
 
         const gainNode2 = ctx.createGain()
-        gainNode2.gain.setValueAtTime(0.02, startTime)
+        gainNode2.gain.setValueAtTime(0.02 * this.volume, startTime)
         gainNode2.gain.exponentialRampToValueAtTime(0.001, startTime + duration)
 
         osc.connect(gainNode)
@@ -131,7 +186,7 @@ export class VoiceService {
       window.SpeechRecognition || window.webkitSpeechRecognition
 
     if (!SpeechRecognition) {
-      onError('Speech recognition is not supported on this device/browser.')
+      onError('Speech recognition not available on this device.')
       return () => {}
     }
 
@@ -170,7 +225,7 @@ export class VoiceService {
           try {
             this.recognition.stop()
           } catch {
-            // ignore
+            // ignore cleanup errors
           }
         }
         this.isListening = false
@@ -190,7 +245,8 @@ export class VoiceService {
     window.speechSynthesis.cancel()
     const utterance = new SpeechSynthesisUtterance(text)
     utterance.rate = 1.05
-    utterance.pitch = 1.15 // Slightly higher pitch matching character personality
+    utterance.pitch = 1.15
+    utterance.volume = this.volume
 
     utterance.onend = () => {
       if (onEnd) onEnd()

@@ -13,8 +13,8 @@
 
 | Platform | Download | Requirements |
 | :--- | :--- | :--- |
-| **📱 Android App** | [**Download `.apk` (v0.2.1)**](https://github.com/chiragsatish2011-pixel/Nomin-s-Trey/releases/download/v0.2.1/trey-companion-v0.2.1-debug-signed.apk) | Android 8.0+ (Phones & Tablets) |
-| **💻 Windows PC** | [**Download `.exe` Installer (v0.2.1)**](https://github.com/chiragsatish2011-pixel/Nomin-s-Trey/releases/download/v0.2.1/Trey-Setup-0.2.1.exe) | Windows 10 or 11 (64-bit) |
+| **📱 Android App** | [**Download `.apk` (v0.2.2)**](https://github.com/chiragsatish2011-pixel/Nomin-s-Trey/releases/download/v0.2.2/trey-companion-v0.2.2-debug-signed.apk) | Android 8.0+ (Phones & Tablets) |
+| **💻 Windows PC** | [**Download `.exe` Installer (v0.2.2)**](https://github.com/chiragsatish2011-pixel/Nomin-s-Trey/releases/download/v0.2.2/Trey-Setup-0.2.2.exe) | Windows 10 or 11 (64-bit) |
 | **📦 All Releases** | [**GitHub Releases Hub**](https://github.com/chiragsatish2011-pixel/Nomin-s-Trey/releases) | Checksums & release archives |
 
 ---
@@ -25,10 +25,10 @@ Installing Trey on Android is fast and takes less than a minute. Because Trey is
 
 ### Step 1: Download the File
 Open your mobile browser (like Chrome) and tap:  
-👉 **[Download Trey for Android (`.apk`)](https://github.com/chiragsatish2011-pixel/Nomin-s-Trey/releases/download/v0.2.1/trey-companion-v0.2.1-debug-signed.apk)**
+👉 **[Download Trey for Android (`.apk`)](https://github.com/chiragsatish2011-pixel/Nomin-s-Trey/releases/download/v0.2.2/trey-companion-v0.2.2-debug-signed.apk)**
 
 ### Step 2: Allow Installation
-When the download finishes, tap **Open** or find `trey-companion-v0.2.1-debug-signed.apk` in your **Downloads** folder.
+When the download finishes, tap **Open** or find `trey-companion-v0.2.2-debug-signed.apk` in your **Downloads** folder.
 
 > [!NOTE]  
 > If Android says: *"For your security, your phone is not allowed to install unknown apps from this source"*:
@@ -44,7 +44,7 @@ When the download finishes, tap **Open** or find `trey-companion-v0.2.1-debug-si
 
 ## 💻 How to Install Trey on Your Windows PC
 
-1. Download **[Trey-Setup-0.2.1.exe](https://github.com/chiragsatish2011-pixel/Nomin-s-Trey/releases/download/v0.2.1/Trey-Setup-0.2.1.exe)**.
+1. Download **[Trey-Setup-0.2.2.exe](https://github.com/chiragsatish2011-pixel/Nomin-s-Trey/releases/download/v0.2.2/Trey-Setup-0.2.2.exe)**.
 2. Double-click the installer. Follow the simple on-screen wizard.
 3. Trey will launch right onto your desktop as a cute floating berry companion, complete with a system tray icon and a glass dashboard.
 
@@ -66,6 +66,19 @@ When both devices are on your home Wi-Fi network, pairing is instantaneous, end-
 1. **On your PC:** Open the Trey Dashboard (click the Trey tray icon -> **Dashboard**). Click **"Pair Phone"** in the sidebar. A unique, single-use QR code will appear.
 2. **On your phone:** Open the Trey app, tap the **Camera Icon** at the top right, and point your camera at the PC screen. *(If camera permissions are denied, you can paste the text code manually).*
 3. **Connected!** Both devices instantly perform a mutual cryptographic handshake (HMAC-SHA256) and establish an encrypted session (AES-256-GCM). Trey's eyes on your phone will immediately mirror your PC!
+
+---
+
+## ✨ Immersive Full-Screen Mobile Experience (Inspired by Bluey)
+
+The mobile companion delivers an edge-to-edge, OLED pure black interactive face view with fluid physical springs and tactile interaction:
+
+- **Touch & Hold Voice Aura:** Touch and hold anywhere on the screen (220ms threshold) to activate the luminous voice aura. Dynamic radial blooms (indigo, periwinkle, neon magenta, and electric cyan) swell and pulse in real time with the acoustic loudness of your voice via hardware-accelerated Web Audio metering.
+- **Physical Spring Physics & Eye Tracking:** Trey's eyes, pupils, eyelids, and blueberry crown respond smoothly at 60fps to your finger's position across the screen, mimicking physical gaze mechanics.
+- **Interactive Double-Tap Actions:** Double tap the character to wake Trey up with a cheerful musical chirp and playful eye hop.
+- **Minimalist Floating Glass HUD:** Essential mission status, real-time voice meter capsule, countdown clock, and immediate Emergency STOP button float cleanly over the OLED canvas.
+- **Swipe-Up Settings Drawer:** Swipe up or tap the settings pill to reveal mission timers (15m, 25m, 45m, 60m), mode switching, NIM API keys, and cartoon synthesizer sound volume.
+- **Hardware-Accelerated QR Scanner:** Point your phone camera at your PC screen to pair in seconds; frames are decoded automatically via native `BarcodeDetector` with continuous `jsQR` canvas fallback.
 
 ---
 

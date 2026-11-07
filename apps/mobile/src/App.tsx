@@ -3,33 +3,37 @@
  * Company: Nomin
  * Copyright (c) 2026 Nomin / Chirag S
  *
- * Root Mobile Application for Trey (Companion & Standalone Multi-Mode).
+ * Full-Screen Trey Mobile App (Companion & Standalone Multi-Mode).
+ * Recreates the complete full-screen experience from Riley Brown's Bluey video:
+ * - Full-screen responsive canvas face on pure OLED black
+ * - Touch-and-hold anywhere on the screen with radiant atmospheric glow effect
+ * - Real-time audio waveform volume reactivity while speaking
+ * - Direct finger gaze tracking across the entire display
+ * - Apple-style minimalist floating HUD with large rounded countdown clock
+ * - Instant emergency STOP button
+ * - QR camera scanner with hardware BarcodeDetector + jsQR fallback
+ * - Slide-up Focus Dashboard & Settings drawer
  */
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import {
   TreyMood,
   FocusSessionState,
   PairingRecord
 } from '@nomin/protocol'
 import { TreyCharacter } from './components/TreyCharacter'
-import { StopButton } from './components/StopButton'
-import { Timeline } from './components/Timeline'
+import { GlowEffect } from './components/GlowEffect'
+import { FaceHUD } from './components/FaceHUD'
 import { ScannerModal } from './components/ScannerModal'
-import { SettingsModal } from './components/SettingsModal'
-import {
-  StorageService,
-  AppMode,
-  AppTheme
-} from './services/StorageService'
+import { DashboardDrawer } from './components/DashboardDrawer'
+import { StorageService, AppMode } from './services/StorageService'
 import { companionConnection, ConnectionState } from './services/CompanionConnection'
 import { voiceService } from './services/VoiceService'
+import { audioRecordingService } from './services/AudioRecordingService'
 import { nimDirectService } from './services/NimDirectService'
-import { Mic, Send, Sliders, QrCode } from 'lucide-react'
 
 export const App: React.FC = () => {
   const [appMode, setAppMode] = useState<AppMode>(StorageService.getActiveMode())
-  const [appTheme, setAppTheme] = useState<AppTheme>(StorageService.getTheme())
   const [pairingRecord, setPairingRecord] = useState<PairingRecord | null>(
     StorageService.getPairingRecord()
   )
@@ -38,24 +42,32 @@ export const App: React.FC = () => {
   const [connState, setConnState] = useState<ConnectionState>('disconnected')
   const [isFresh, setIsFresh] = useState(false)
 
-  // Character & State
+  // Character Face State
   const [characterMood, setCharacterMood] = useState<TreyMood>('listening')
   const [talkLevel, setTalkLevel] = useState(0)
-  const [currentSession, setCurrentSession] = useState<FocusSessionState | undefined>(undefined)
-  const [takeoverActive, setTakeoverActive] = useState(false)
-  const [activeStep, setActiveStep] = useState<
-    { stepNumber: number; thought: string; actionDescription: string } | undefined
-  >(undefined)
+  const [desktopGaze, setDesktopGaze] = useState<{ x: number; y: number } | undefined>(undefined)
+  const [touchPoint, setTouchPoint] = useState<{ x: number; y: number } | null>(null)
 
-  // Standalone local focus state
+  // Focus Sessions & Tasks
+  const [currentSession, setCurrentSession] = useState<FocusSessionState | undefined>(undefined)
   const [standaloneSeconds, setStandaloneSeconds] = useState(1500)
   const [standaloneRunning, setStandaloneRunning] = useState(false)
 
-  // Modals & Inputs
+  // Modals & Drawers
   const [scannerOpen, setScannerOpen] = useState(false)
-  const [settingsOpen, setSettingsOpen] = useState(false)
-  const [taskInput, setTaskInput] = useState('')
-  const [isListeningVoice, setIsListeningVoice] = useState(false)
+  const [dashboardOpen, setDashboardOpen] = useState(false)
+
+  // Touch and Hold Interaction State
+  const [isHolding, setIsHolding] = useState(false)
+  const [isThinking, setIsThinking] = useState(false)
+  const [audioLevel, setAudioLevel] = useState(0)
+  const [touchPos, setTouchPos] = useState<{ x: number; y: number } | null>(null)
+  const [volume, setVolume] = useState(voiceService.getVolume())
+
+  // Internal Gesture Tracking
+  const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isHoldingRef = useRef(false)
+  const lastTapTimeRef = useRef(0)
 
   // 1. Companion Connection Wire Listener
   useEffect(() => {
@@ -68,27 +80,18 @@ export const App: React.FC = () => {
         switch (packet.type) {
           case 'state':
             setCurrentSession(packet.current)
-            setTakeoverActive(packet.takeoverActive)
-            setActiveStep(packet.takeoverStep)
             break
           case 'face':
             setCharacterMood(packet.mood)
             setTalkLevel(packet.talk)
-            break
-          case 'task_step':
-            setActiveStep({
-              stepNumber: packet.step,
-              thought: packet.thought,
-              actionDescription: packet.actionDescription
-            })
-            setCharacterMood('pointing')
+            setDesktopGaze({ x: packet.gazeX, y: packet.gazeY })
             break
           case 'task_result':
-            setActiveStep(undefined)
             setCharacterMood(packet.success ? 'happy' : 'resting')
             voiceService.playChirp(3, packet.success ? 'happy' : 'alert')
             break
           case 'nudge':
+            voiceService.triggerHaptic('alert')
             voiceService.playChirp(2, 'alert')
             break
           default:
@@ -108,7 +111,18 @@ export const App: React.FC = () => {
     }
   }, [appMode, pairingRecord])
 
-  // 2. Standalone Monotonic Timer (Single source of truth)
+  // 2. Audio Level Stream Listener for Glow Reactivity
+  useEffect(() => {
+    const unsub = audioRecordingService.addLevelListener((lvl) => {
+      setAudioLevel(lvl)
+      if (isHoldingRef.current) {
+        setTalkLevel(lvl)
+      }
+    })
+    return unsub
+  }, [])
+
+  // 3. Standalone Monotonic Timer (Single source of truth)
   useEffect(() => {
     if (appMode !== 'standalone' || !standaloneRunning) return
 
@@ -123,6 +137,7 @@ export const App: React.FC = () => {
       if (left === 0) {
         setStandaloneRunning(false)
         setCharacterMood('happy')
+        voiceService.triggerHaptic('alert')
         voiceService.playChirp(4, 'happy')
         voiceService.speak('Focus session complete! Great work.')
         clearInterval(timer)
@@ -130,10 +145,11 @@ export const App: React.FC = () => {
     }, 250)
 
     return () => clearInterval(timer)
-  }, [appMode, standaloneRunning])
+  }, [appMode, standaloneRunning, standaloneSeconds])
 
   // Handlers
-  const handleStop = async () => {
+  const handleStop = useCallback(async () => {
+    voiceService.triggerHaptic('alert')
     voiceService.playChirp(2, 'alert')
     if (appMode === 'companion') {
       try {
@@ -145,300 +161,226 @@ export const App: React.FC = () => {
       setStandaloneRunning(false)
       setCharacterMood('resting')
     }
-  }
+  }, [appMode])
 
-  const handleStartTask = async (task: string, mode: 'focus' | 'takeover' = 'focus') => {
+  const handleStartTask = useCallback(async (task: string, durationMinutes = 30) => {
     if (!task.trim()) return
-    setTaskInput('')
 
     if (appMode === 'companion') {
       try {
-        await companionConnection.sendTaskStart(task.trim(), 30, mode)
+        await companionConnection.sendTaskStart(task.trim(), durationMinutes, 'focus')
         voiceService.playChirp(2, 'happy')
       } catch (err) {
         console.error('Task start error:', err)
       }
     } else {
-      // Standalone mode: trigger direct NIM query or start focus timer
-      setStandaloneSeconds(1800)
+      setStandaloneSeconds(durationMinutes * 60)
       setStandaloneRunning(true)
       setCharacterMood('thinking')
+      setIsThinking(true)
 
       const nimKey = StorageService.getNimApiKey()
       if (nimKey) {
         try {
-          const reply = await nimDirectService.completeChat(nimKey, [{ role: 'user', content: task }])
+          const reply = await nimDirectService.completeChat(nimKey, [
+            {
+              role: 'system',
+              content: 'You are Trey, an encouraging, friendly focus buddy. Keep answers to 1-2 concise, cheerful sentences.'
+            },
+            { role: 'user', content: task }
+          ])
+          setIsThinking(false)
           setCharacterMood('talking')
+          voiceService.playChirp(3, 'happy')
           voiceService.speak(reply, () => setCharacterMood('listening'))
         } catch {
+          setIsThinking(false)
           setCharacterMood('listening')
         }
       } else {
+        setIsThinking(false)
+        voiceService.playChirp(3, 'happy')
         setCharacterMood('listening')
       }
     }
-  }
+  }, [appMode])
 
-  const handleVoiceToggle = () => {
-    if (isListeningVoice) {
-      setIsListeningVoice(false)
-      setCharacterMood('listening')
+  // Process Completed Touch-and-Hold Voice Turn
+  const handleProcessVoiceTurn = useCallback(async () => {
+    setIsThinking(true)
+    setCharacterMood('thinking')
+    voiceService.playChirp(2, 'curious')
+
+    if (appMode === 'companion') {
+      // In Companion mode, trigger focus task on desktop
+      handleStartTask('Voice Focus Task', 25)
+      setTimeout(() => {
+        setIsThinking(false)
+        setCharacterMood('listening')
+      }, 1200)
+    } else {
+      // Standalone mode: AI chat response
+      const nimKey = StorageService.getNimApiKey()
+      if (nimKey) {
+        try {
+          const reply = await nimDirectService.completeChat(nimKey, [
+            {
+              role: 'system',
+              content: 'You are Trey, a friendly focus buddy. Greet your user and encourage their current work in 1 brief cheerful sentence.'
+            },
+            { role: 'user', content: 'Hey Trey, I just checked in with you.' }
+          ])
+          setIsThinking(false)
+          setCharacterMood('talking')
+          voiceService.playChirp(3, 'happy')
+          voiceService.speak(reply, () => setCharacterMood('listening'))
+        } catch {
+          setIsThinking(false)
+          setCharacterMood('listening')
+        }
+      } else {
+        setTimeout(() => {
+          setIsThinking(false)
+          setCharacterMood('happy')
+          voiceService.playChirp(3, 'happy')
+          voiceService.speak('I am listening! Add your NVIDIA NIM key in settings for direct AI replies.')
+        }, 800)
+      }
+    }
+  }, [appMode, handleStartTask])
+
+  // Gesture: Pointer Events for Touch and Hold
+  const handlePointerDown = (e: React.PointerEvent) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const normX = ((e.clientX - rect.left) / rect.width) * 2 - 1
+    const normY = ((e.clientY - rect.top) / rect.height) * 2 - 1
+    setTouchPoint({ x: normX, y: normY })
+    setTouchPos({ x: e.clientX, y: e.clientY })
+
+    // Double-tap check (< 300ms)
+    const now = performance.now()
+    if (now - lastTapTimeRef.current < 300) {
+      if (holdTimerRef.current) {
+        clearTimeout(holdTimerRef.current)
+        holdTimerRef.current = null
+      }
+      voiceService.triggerHaptic('tap')
+      // Toggle wake / sleep or pause
+      if (standaloneRunning) {
+        handleStop()
+      } else {
+        voiceService.playChirp(3, 'happy')
+        setCharacterMood((m) => (m === 'sleepy' ? 'happy' : 'sleepy'))
+      }
+      lastTapTimeRef.current = 0
       return
     }
+    lastTapTimeRef.current = now
 
-    setIsListeningVoice(true)
-    setCharacterMood('listening')
-    voiceService.startSpeechRecognition(
-      (transcript) => {
-        setIsListeningVoice(false)
-        handleStartTask(transcript)
-      },
-      (err) => {
-        console.warn('Voice recognition error:', err)
-        setIsListeningVoice(false)
-      }
-    )
+    // Touch-and-hold trigger threshold: 220ms
+    holdTimerRef.current = setTimeout(async () => {
+      isHoldingRef.current = true
+      setIsHolding(true)
+      setCharacterMood('listening')
+      voiceService.triggerHaptic('hold')
+      voiceService.playChirp(1, 'curious')
+      await audioRecordingService.startListening()
+    }, 220)
   }
 
-  const isDark = appTheme === 'dark'
+  const handlePointerMove = (e: React.PointerEvent) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const normX = ((e.clientX - rect.left) / rect.width) * 2 - 1
+    const normY = ((e.clientY - rect.top) / rect.height) * 2 - 1
+    setTouchPoint({ x: normX, y: normY })
+    setTouchPos({ x: e.clientX, y: e.clientY })
+  }
+
+  const handlePointerUp = async () => {
+    setTouchPoint(null)
+    if (holdTimerRef.current) {
+      clearTimeout(holdTimerRef.current)
+      holdTimerRef.current = null
+    }
+
+    if (isHoldingRef.current) {
+      isHoldingRef.current = false
+      setIsHolding(false)
+      voiceService.triggerHaptic('release')
+      await audioRecordingService.stopListening()
+      handleProcessVoiceTurn()
+    }
+  }
+
+  const handleToggleSound = () => {
+    const newVol = volume > 0 ? 0 : 1
+    setVolume(newVol)
+    voiceService.setVolume(newVol)
+    if (newVol > 0) {
+      voiceService.playChirp(2, 'happy')
+    }
+  }
+
+  // Calculate remaining countdown seconds
+  const remainingSeconds =
+    appMode === 'companion'
+      ? currentSession
+        ? Math.max(0, currentSession.duration - currentSession.elapsed)
+        : 1800
+      : standaloneSeconds
 
   return (
     <div
       style={{
-        width: '100%',
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        background: isDark ? '#0A0D14' : '#F1F5F9',
-        color: isDark ? '#F8FAFC' : '#0F172A',
-        padding: 'env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)',
+        width: '100vw',
+        height: '100vh',
+        background: '#000000',
         position: 'relative',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        userSelect: 'none',
+        touchAction: 'none'
       }}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
     >
-      {/* 1. Header Bar */}
-      <header
-        style={{
-          padding: '16px 20px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          borderBottom: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid rgba(0, 0, 0, 0.08)'
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div
-            style={{
-              padding: '4px 10px',
-              borderRadius: 99,
-              background: appMode === 'companion' ? 'rgba(108, 134, 245, 0.18)' : 'rgba(16, 185, 129, 0.18)',
-              color: appMode === 'companion' ? '#A9BCFF' : '#6EE7B7',
-              fontSize: 12,
-              fontWeight: 700,
-              textTransform: 'uppercase',
-              letterSpacing: '0.04em'
-            }}
-          >
-            {appMode === 'companion' ? 'Companion' : 'Standalone'}
-          </div>
+      {/* Layer 1: Ethereal Touch-and-Hold Luminous Aura Glow */}
+      <GlowEffect
+        isHolding={isHolding}
+        isThinking={isThinking}
+        audioLevel={audioLevel}
+        touchPos={touchPos}
+      />
 
-          {appMode === 'companion' && (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                fontSize: 12,
-                color:
-                  connState === 'connected' && isFresh
-                    ? '#10B981'
-                    : connState === 'connected' && !isFresh
-                      ? '#F59E0B'
-                      : '#EF4444'
-              }}
-            >
-              <div
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: '50%',
-                  background: 'currentColor',
-                  boxShadow: '0 0 8px currentColor'
-                }}
-              />
-              <span style={{ fontWeight: 600 }}>
-                {connState === 'connected' && isFresh
-                  ? 'Connected'
-                  : connState === 'connected' && !isFresh
-                    ? 'Stale (>5s)'
-                    : connState === 'reconnecting'
-                      ? 'Reconnecting'
-                      : 'Disconnected'}
-              </span>
-            </div>
-          )}
-        </div>
+      {/* Layer 2: Full-Screen Canvas Character */}
+      <TreyCharacter
+        mood={characterMood}
+        talkLevel={talkLevel}
+        gazePoint={desktopGaze}
+        touchPoint={touchPoint}
+        interactive={true}
+      />
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {appMode === 'companion' && !pairingRecord && (
-            <button
-              onClick={() => setScannerOpen(true)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '6px 12px',
-                borderRadius: 99,
-                background: '#6C86F5',
-                border: 'none',
-                color: '#FFFFFF',
-                fontSize: 12,
-                fontWeight: 600,
-                cursor: 'pointer'
-              }}
-            >
-              <QrCode size={14} />
-              <span>Pair PC</span>
-            </button>
-          )}
+      {/* Layer 3: Floating Apple-Style Glass HUD */}
+      <FaceHUD
+        appMode={appMode}
+        connState={connState}
+        isFresh={isFresh}
+        currentSession={currentSession}
+        standaloneRunning={standaloneRunning}
+        remainingSeconds={remainingSeconds}
+        isAsking={isHolding}
+        isThinking={isThinking}
+        audioLevel={audioLevel}
+        volume={volume}
+        onToggleSound={handleToggleSound}
+        onOpenScanner={() => setScannerOpen(true)}
+        onOpenDashboard={() => setDashboardOpen(true)}
+        onStop={handleStop}
+      />
 
-          <button
-            onClick={() => setSettingsOpen(true)}
-            aria-label="Settings"
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 10,
-              background: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
-              border: 'none',
-              color: isDark ? '#F8FAFC' : '#0F172A',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer'
-            }}
-          >
-            <Sliders size={18} />
-          </button>
-        </div>
-      </header>
-
-      {/* 2. Character Arena */}
-      <main
-        style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          position: 'relative',
-          padding: '12px 16px 20px',
-          gap: 16,
-          overflowY: 'auto'
-        }}
-      >
-        <div style={{ height: 260, width: '100%', position: 'relative' }}>
-          <TreyCharacter
-            mood={characterMood}
-            mode="rising-sun"
-            talkLevel={talkLevel}
-            interactive={true}
-          />
-        </div>
-
-        {/* 3. Task & Step Timeline */}
-        <Timeline
-          session={
-            appMode === 'companion'
-              ? currentSession
-              : standaloneRunning
-                ? {
-                    id: 'standalone-focus',
-                    task: 'Focus Session',
-                    duration: 1800,
-                    elapsed: 1800 - standaloneSeconds,
-                    status: 'running',
-                    detail: 'Trey is watching your focus.',
-                    checks: []
-                  }
-                : undefined
-          }
-          isFresh={appMode === 'companion' ? isFresh : true}
-          takeoverActive={takeoverActive}
-          activeStep={activeStep}
-        />
-
-        {/* 4. Voice & Text Task Dispatch Bar */}
-        <div style={{ display: 'flex', gap: 8 }}>
-          <div
-            style={{
-              flex: 1,
-              display: 'flex',
-              alignItems: 'center',
-              background: isDark ? '#121826' : '#FFFFFF',
-              border: isDark ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.1)',
-              borderRadius: 14,
-              padding: '0 12px'
-            }}
-          >
-            <input
-              type="text"
-              placeholder={appMode === 'companion' ? 'Tell Trey what to do...' : 'Ask Trey anything...'}
-              value={taskInput}
-              onChange={(e) => setTaskInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleStartTask(taskInput)}
-              style={{
-                flex: 1,
-                border: 'none',
-                background: 'transparent',
-                color: isDark ? '#F8FAFC' : '#0F172A',
-                fontSize: 14,
-                padding: '12px 0',
-                outline: 'none'
-              }}
-            />
-            <button
-              onClick={() => handleStartTask(taskInput)}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#6C86F5',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                padding: 4
-              }}
-            >
-              <Send size={18} />
-            </button>
-          </div>
-
-          <button
-            onClick={handleVoiceToggle}
-            aria-label="Voice input"
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: 14,
-              background: isListeningVoice ? '#EF4444' : '#6C86F5',
-              border: 'none',
-              color: '#FFFFFF',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              flexShrink: 0
-            }}
-          >
-            <Mic size={20} />
-          </button>
-        </div>
-
-        {/* 5. Big Red STOP Button (Always visible) */}
-        <div style={{ marginTop: 'auto', paddingTop: 8 }}>
-          <StopButton onStop={handleStop} />
-        </div>
-      </main>
-
-      {/* Modals */}
+      {/* Layer 4: QR Scanner Modal */}
       {scannerOpen && (
         <ScannerModal
           onClose={() => setScannerOpen(false)}
@@ -449,26 +391,29 @@ export const App: React.FC = () => {
         />
       )}
 
-      {settingsOpen && (
-        <SettingsModal
-          onClose={() => setSettingsOpen(false)}
+      {/* Layer 5: Focus Dashboard & Settings Drawer */}
+      {dashboardOpen && (
+        <DashboardDrawer
+          onClose={() => setDashboardOpen(false)}
+          currentMode={appMode}
           onModeChanged={(m) => {
             setAppMode(m)
             StorageService.setActiveMode(m)
           }}
-          onThemeChanged={(t) => {
-            setAppTheme(t)
-            StorageService.setTheme(t)
-          }}
+          onStartTask={(t, mins) => handleStartTask(t, mins)}
+          onStopTask={handleStop}
+          currentSession={currentSession}
+          isPaired={!!pairingRecord}
+          pairedHostname={pairingRecord?.service}
           onDisconnectDesktop={() => {
             StorageService.setPairingRecord(null)
             setPairingRecord(null)
             companionConnection.disconnect()
-            setSettingsOpen(false)
           }}
-          currentMode={appMode}
-          currentTheme={appTheme}
-          pairedHostname={pairingRecord?.service}
+          onOpenScanner={() => {
+            setDashboardOpen(false)
+            setScannerOpen(true)
+          }}
         />
       )}
     </div>

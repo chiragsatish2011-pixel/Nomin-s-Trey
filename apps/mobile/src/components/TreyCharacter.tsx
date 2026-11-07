@@ -3,25 +3,27 @@
  * Company: Nomin
  * Copyright (c) 2026 Nomin / Chirag S
  *
- * Direct reuse of Trey's HTML5 Canvas character rendering with 60fps damped harmonic springs,
- * saccadic eye wander, pupil convergence, and reactive expressions.
+ * Full-Screen High-Fidelity Trey Character for Mobile Companion & Standalone.
+ * Faithful port of Riley Brown's Bluey iOS FaceView & BlobShape:
+ * - Damped harmonic springs for gaze, brows, blinks, lean, and hops
+ * - Full-screen responsive viewport canvas (OLED pure black)
+ * - Organic squircle body geometry with cubic bezier curves
+ * - 4-stop blueberry gradient with radial specular shine and crown
+ * - Saccadic wander, double-blinking, and live touch tracking
  */
 
 import React, { useEffect, useRef } from 'react'
 import { TreyMood } from '@nomin/protocol'
 
-export type TreyCharacterMode = 'contained' | 'rising-sun'
-
 export interface TreyCharacterProps {
   mood?: TreyMood
-  mode?: TreyCharacterMode
   talkLevel?: number
   gazePoint?: { x: number; y: number }
+  touchPoint?: { x: number; y: number } | null
   className?: string
   style?: React.CSSProperties
   interactive?: boolean
   userScale?: number
-  onClick?: () => void
 }
 
 class Spring {
@@ -45,15 +47,15 @@ class Spring {
 
 export const TreyCharacter: React.FC<TreyCharacterProps> = ({
   mood = 'listening',
-  mode = 'contained',
   talkLevel = 0,
   gazePoint,
+  touchPoint,
   className,
   style,
   interactive = true,
-  userScale = 1.0,
-  onClick
+  userScale = 1.0
 }) => {
+  void interactive
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
 
   const springs = useRef({
@@ -79,14 +81,13 @@ export const TreyCharacter: React.FC<TreyCharacterProps> = ({
     nextSaccade: 0,
     jitter: { x: 0, y: 0 },
     nextJitter: 0,
-    nextHop: performance.now() / 1000 + 8.0,
-    touchGaze: null as { x: number; y: number } | null
+    nextHop: performance.now() / 1000 + 8.0
   })
 
-  const propsRef = useRef({ mood, mode, talkLevel, gazePoint, userScale })
+  const propsRef = useRef({ mood, talkLevel, gazePoint, touchPoint, userScale })
   useEffect(() => {
-    propsRef.current = { mood, mode, talkLevel, gazePoint, userScale }
-  }, [mood, mode, talkLevel, gazePoint, userScale])
+    propsRef.current = { mood, talkLevel, gazePoint, touchPoint, userScale }
+  }, [mood, talkLevel, gazePoint, touchPoint, userScale])
 
   useEffect(() => {
     let animFrame: number
@@ -94,6 +95,17 @@ export const TreyCharacter: React.FC<TreyCharacterProps> = ({
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
+
+    const handleResize = () => {
+      if (!canvas) return
+      const rect = canvas.getBoundingClientRect()
+      const dpr = Math.min(window.devicePixelRatio || 1, 2)
+      canvas.width = rect.width * dpr
+      canvas.height = rect.height * dpr
+    }
+
+    handleResize()
+    window.addEventListener('resize', handleResize)
 
     const renderLoop = (timeMs: number) => {
       const now = timeMs / 1000
@@ -112,10 +124,10 @@ export const TreyCharacter: React.FC<TreyCharacterProps> = ({
         }
       }
 
-      // Target Gaze computation
+      // Compute target gaze coordinates (-1..1)
       let targetGaze = { x: 0, y: 0 }
-      if (st.touchGaze) {
-        targetGaze = st.touchGaze
+      if (propsRef.current.touchPoint) {
+        targetGaze = propsRef.current.touchPoint
       } else if (propsRef.current.gazePoint) {
         targetGaze = propsRef.current.gazePoint
       } else {
@@ -151,6 +163,7 @@ export const TreyCharacter: React.FC<TreyCharacterProps> = ({
       }
       st.talk += (wantTalk - st.talk) * Math.min(1, dt * 25)
 
+      // Expression parameters
       let wantPupil = 1.0, wantLift = 0.0, wantTilt = 0.0, wantBlush = 0.25, wantSquint = 0.0
       switch (activeMood) {
         case 'listening':
@@ -198,7 +211,7 @@ export const TreyCharacter: React.FC<TreyCharacterProps> = ({
 
       const breathe = Math.sin(now * (activeMood === 'resting' ? 1.1 : 1.8))
 
-      // Canvas Rendering
+      // Canvas dimensions
       const width = canvas.width
       const height = canvas.height
       ctx.clearRect(0, 0, width, height)
@@ -206,7 +219,8 @@ export const TreyCharacter: React.FC<TreyCharacterProps> = ({
       ctx.save()
       const dWidth = 844
       const dHeight = 390
-      const scale = Math.min(width / dWidth, height / dHeight) * (propsRef.current.userScale || 1.0)
+      // In mobile full-screen mode, use max scaling so the character fills the phone screen
+      const scale = Math.max(width / dWidth, height / dHeight) * (propsRef.current.userScale || 1.0)
       ctx.translate((width - dWidth * scale) / 2, height - dHeight * scale)
       ctx.scale(scale, scale)
 
@@ -220,219 +234,278 @@ export const TreyCharacter: React.FC<TreyCharacterProps> = ({
       ctx.scale(2 - stretch, stretch)
       ctx.translate(-pivot.x, -pivot.y)
 
-      // Character Blueberry Body
+      // Draw Organic Bluey/Trey Squircle Shape:
+      // border-radius: 52% 48% 46% 54% / 58% 56% 44% 42%
+      const bw = body.width, bh = body.height
+      const tl = { w: 0.52 * bw, h: 0.58 * bh }
+      const tr = { w: 0.48 * bw, h: 0.56 * bh }
+      const br = { w: 0.46 * bw, h: 0.44 * bh }
+      const bl = { w: 0.54 * bw, h: 0.42 * bh }
+      const k = 0.5523
+
       ctx.beginPath()
-      ctx.ellipse(
-        body.x + body.width / 2,
-        body.y + body.height / 2,
-        body.width / 2,
-        body.height / 2,
-        0,
-        0,
-        Math.PI * 2
+      ctx.moveTo(body.x + tl.w, body.y)
+      ctx.lineTo(body.x + bw - tr.w, body.y)
+      ctx.bezierCurveTo(
+        body.x + bw - tr.w * (1 - k), body.y,
+        body.x + bw, body.y + tr.h * (1 - k),
+        body.x + bw, body.y + tr.h
       )
-      const bodyGrad = ctx.createRadialGradient(
+      ctx.lineTo(body.x + bw, body.y + bh - br.h)
+      ctx.bezierCurveTo(
+        body.x + bw, body.y + bh - br.h * (1 - k),
+        body.x + bw - br.w * (1 - k), body.y + bh,
+        body.x + bw - br.w, body.y + bh
+      )
+      ctx.lineTo(body.x + bl.w, body.y + bh)
+      ctx.bezierCurveTo(
+        body.x + bl.w * (1 - k), body.y + bh,
+        body.x, body.y + bh - bl.h * (1 - k),
+        body.x, body.y + bh - bl.h
+      )
+      ctx.lineTo(body.x, body.y + tl.h)
+      ctx.bezierCurveTo(
+        body.x, body.y + tl.h * (1 - k),
+        body.x + tl.w * (1 - k), body.y,
+        body.x + tl.w, body.y
+      )
+      ctx.closePath()
+
+      // 4-stop 150° blueberry gradient: #A9BCFF, #6C86F5, #4254D6, #2B2F8F
+      const grad = ctx.createLinearGradient(
+        body.x + 0.25 * bw,
+        body.y + 0.067 * bh,
+        body.x + 0.75 * bw,
+        body.y + 0.933 * bh
+      )
+      grad.addColorStop(0, '#A9BCFF')
+      grad.addColorStop(0.34, '#6C86F5')
+      grad.addColorStop(0.68, '#4254D6')
+      grad.addColorStop(1.0, '#2B2F8F')
+
+      ctx.fillStyle = grad
+      ctx.fill()
+
+      // Specular soft shine overlay
+      ctx.save()
+      ctx.clip()
+      const shineGrad = ctx.createRadialGradient(
         body.x + 246,
         body.y + 126,
         0,
-        body.x + body.width / 2,
-        body.y + body.height / 2,
-        body.width / 2
+        body.x + 246,
+        body.y + 126,
+        243
       )
-      bodyGrad.addColorStop(0, '#6C86F5')
-      bodyGrad.addColorStop(0.65, '#4254D6')
-      bodyGrad.addColorStop(1, '#2B2F8F')
-      ctx.fillStyle = bodyGrad
-      ctx.fill()
+      shineGrad.addColorStop(0, 'rgba(255, 255, 255, 0.45)')
+      shineGrad.addColorStop(1, 'rgba(255, 255, 255, 0)')
+      ctx.fillStyle = shineGrad
+      ctx.fillRect(body.x, body.y, bw, bh)
 
-      // Specular highlight
-      ctx.save()
+      // Glossy sparkle on forehead
       ctx.beginPath()
-      ctx.ellipse(body.x + 210, body.y + 55, 46, 22, -0.2, 0, Math.PI * 2)
+      ctx.ellipse(body.x + 190, body.y + 40, 23, 11, 0, 0, Math.PI * 2)
       ctx.fillStyle = 'rgba(255, 255, 255, 0.35)'
       ctx.fill()
       ctx.restore()
 
-      // Crown / Blueberry calyx
-      ctx.fillStyle = '#1A1D36'
+      // 10-point Blueberry Crown on head
+      const crownBox = { x: body.x + 368, y: body.y - 20 - sp.browLift.value * 0.3, w: 84, h: 56 }
+      const crownPts = [
+        [30, 4], [36, 16], [52, 12], [40, 24], [46, 36],
+        [30, 28], [14, 36], [20, 24], [8, 12], [24, 16]
+      ]
       ctx.beginPath()
-      ctx.ellipse(body.x + body.width / 2, body.y - 12 - sp.browLift.value * 0.3, 42, 26, 0, 0, Math.PI * 2)
+      crownPts.forEach(([px, py], i) => {
+        const cx = crownBox.x + (px / 60) * crownBox.w
+        const cy = crownBox.y + (py / 40) * crownBox.h
+        if (i === 0) ctx.moveTo(cx, cy)
+        else ctx.lineTo(cx, cy)
+      })
+      ctx.closePath()
+      ctx.fillStyle = '#1C1F66'
       ctx.fill()
 
-      // Eyes
+      // Blushy Cheeks
       const eyeY = body.y + 157
       const eyeCenters = [
         { x: body.x + 280, y: eyeY },
         { x: body.x + 540, y: eyeY }
       ]
 
-      // Cheeks
-      for (let i = 0; i < 2; i++) {
+      eyeCenters.forEach((c, i) => {
         const side = i === 0 ? -1 : 1
-        const c = eyeCenters[i]
-        ctx.save()
         ctx.beginPath()
-        ctx.ellipse(c.x - 45 + side * 62, c.y + 96, 45, 21, 0, 0, Math.PI * 2)
+        ctx.ellipse(c.x + side * 62, c.y + 96, 45, 21, 0, 0, Math.PI * 2)
         ctx.fillStyle = `rgba(243, 166, 216, ${0.25 + 0.45 * sp.blush.value})`
         ctx.fill()
-        ctx.restore()
-      }
+      })
 
-      // Eyeballs & Pupils
-      const open = Math.max(0.06, 1 - closed) * (1 - st.talk * 0.12)
-      for (let i = 0; i < 2; i++) {
+      // Eyebrows & Eyes
+      const squash = 1 - st.talk * 0.12
+      eyeCenters.forEach((c, i) => {
         const side = i === 0 ? -1 : 1
-        const c = eyeCenters[i]
 
-        // Eyebrows
+        // Eyebrow arch
         ctx.save()
         const browY = c.y - 112 - Math.min(18, Math.max(-10, sp.browLift.value)) * 0.7
         ctx.translate(c.x + side * 6, browY)
-        ctx.rotate(sp.browTilt.value * side * -1 + (activeMood === 'thinking' && i === 1 ? -0.25 : 0))
+        const tilt = sp.browTilt.value * -side + (activeMood === 'thinking' && i === 1 ? -0.25 : 0)
+        ctx.rotate(tilt)
         ctx.beginPath()
         ctx.moveTo(-38, 6)
         ctx.quadraticCurveTo(0, -12, 38, 6)
-        ctx.strokeStyle = '#1A1D36'
         ctx.lineWidth = 14
         ctx.lineCap = 'round'
+        ctx.strokeStyle = '#1C1F66'
         ctx.stroke()
         ctx.restore()
 
+        // Eye state rendering
         if (activeMood === 'resting') {
+          // Closed peaceful curved eyes
           ctx.beginPath()
           ctx.moveTo(c.x - 62, c.y + 6)
           ctx.quadraticCurveTo(c.x, c.y + 52, c.x + 62, c.y + 6)
-          ctx.strokeStyle = '#0B0D1B'
           ctx.lineWidth = 18
           ctx.lineCap = 'round'
+          ctx.strokeStyle = '#17151F'
           ctx.stroke()
-          continue
-        }
-
-        if (activeMood === 'happy' && sp.squint.value > 0.6) {
+        } else if (activeMood === 'happy' && sp.squint.value > 0.6) {
+          // Happy upward laughing eye curves
           ctx.beginPath()
           ctx.moveTo(c.x - 60, c.y + 34)
           ctx.quadraticCurveTo(c.x, c.y - 54, c.x + 60, c.y + 34)
-          ctx.strokeStyle = '#0B0D1B'
           ctx.lineWidth = 24
           ctx.lineCap = 'round'
+          ctx.strokeStyle = '#17151F'
           ctx.stroke()
-          continue
-        }
+        } else {
+          // Open glossy eyes with moving pupils & catchlights
+          const open = Math.max(0.06, 1 - closed) * squash
+          const ew = 95
+          const eh = 95 * open
 
-        // Sclera (White)
-        ctx.save()
-        ctx.beginPath()
-        ctx.ellipse(c.x, c.y, 95, 95 * open, 0, 0, Math.PI * 2)
-        ctx.fillStyle = '#FFFFFF'
-        ctx.fill()
-        ctx.clip()
-
-        if (open > 0.2) {
-          const reach = 50
-          const r = 46 * sp.pupil.value
-          const px = c.x + sp.gazeX.value * reach - side * 3
-          let py = c.y + sp.gazeY.value * reach * open
-          if (activeMood === 'sleepy') py = Math.max(py, c.y) + 28
-
-          // Dark pupil
           ctx.beginPath()
-          ctx.arc(px, py, r, 0, Math.PI * 2)
-          ctx.fillStyle = '#0B0D1B'
-          ctx.fill()
-
-          // Catchlights
-          ctx.beginPath()
-          ctx.arc(px - r * 0.58, py - r * 0.72, r * 0.28, 0, Math.PI * 2)
+          ctx.ellipse(c.x, c.y, ew, eh, 0, 0, Math.PI * 2)
           ctx.fillStyle = '#FFFFFF'
           ctx.fill()
 
+          if (open > 0.2) {
+            ctx.save()
+            ctx.beginPath()
+            ctx.ellipse(c.x, c.y, ew, eh, 0, 0, Math.PI * 2)
+            ctx.clip()
+
+            let gx = sp.gazeX.value
+            let gy = sp.gazeY.value
+            const len = Math.hypot(gx, gy)
+            if (len > 1) {
+              gx /= len
+              gy /= len
+            }
+
+            const reach = 50
+            const pr = 46 * sp.pupil.value
+            const px = c.x + gx * reach - side * 3
+            let py = c.y + gy * reach * open
+            if (activeMood === 'sleepy') {
+              py = Math.max(py, c.y) + 28
+            }
+
+            // Pupil
+            ctx.beginPath()
+            ctx.ellipse(px, py, pr, pr, 0, 0, Math.PI * 2)
+            ctx.fillStyle = '#17151F'
+            ctx.fill()
+
+            // Primary Catchlight
+            ctx.beginPath()
+            ctx.ellipse(px - pr * 0.38, py - pr * 0.44, pr * 0.28, pr * 0.28, 0, 0, Math.PI * 2)
+            ctx.fillStyle = '#FFFFFF'
+            ctx.fill()
+
+            // Secondary Catchlight
+            ctx.beginPath()
+            ctx.ellipse(px + pr * 0.28, py + pr * 0.22, pr * 0.12, pr * 0.12, 0, 0, Math.PI * 2)
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.85)'
+            ctx.fill()
+
+            ctx.restore()
+          }
+        }
+      })
+
+      // Thinking animation dots
+      if (activeMood === 'thinking') {
+        for (let i = 0; i < 3; i++) {
+          const wobble = Math.sin(now * 3 + i) * 4
+          const dx = body.x + 690 + i * 26
+          const dy = body.y + 40 - i * 12 + wobble
           ctx.beginPath()
-          ctx.arc(px + r * 0.28, py + r * 0.22, r * 0.12, 0, Math.PI * 2)
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.85)'
+          ctx.arc(dx, dy, 8, 0, Math.PI * 2)
+          ctx.fillStyle = `rgba(255, 255, 255, ${1 - i * 0.3})`
           ctx.fill()
         }
-        ctx.restore()
       }
 
-      // Mouth
+      // Mouth & Nose
       const noseW = 60 - st.talk * 8
       const noseH = 38 + st.talk * 34
+      const noseX = body.x + 410 - noseW / 2
       const noseY = body.y + 272 - st.talk * 6
-      const noseX = body.x + body.width / 2
 
-      ctx.save()
       if (activeMood === 'happy' && st.talk < 0.1) {
         ctx.beginPath()
-        ctx.moveTo(noseX - noseW / 2 - 8, noseY + 8)
-        ctx.quadraticCurveTo(noseX, noseY + 58, noseX + noseW / 2 + 8, noseY + 8)
-        ctx.fillStyle = '#1A1D36'
+        ctx.moveTo(noseX - 8, noseY + 8)
+        ctx.quadraticCurveTo(noseX + noseW / 2, noseY + 58, noseX + noseW + 8, noseY + 8)
+        ctx.closePath()
+        ctx.fillStyle = '#1C1F66'
         ctx.fill()
       } else {
         ctx.beginPath()
-        ctx.ellipse(noseX, noseY, noseW / 2, noseH / 2, 0, 0, Math.PI * 2)
-        ctx.fillStyle = '#1A1D36'
+        ctx.ellipse(noseX + noseW / 2, noseY + noseH / 2, noseW / 2, noseH / 2, 0, 0, Math.PI * 2)
+        ctx.fillStyle = '#1C1F66'
         ctx.fill()
+
         if (st.talk > 0.25) {
           ctx.beginPath()
-          ctx.ellipse(noseX, noseY + noseH * 0.18, noseW * 0.28, noseH * 0.18, 0, 0, Math.PI * 2)
-          ctx.fillStyle = 'rgba(229, 139, 196, 0.95)'
+          ctx.ellipse(
+            noseX + noseW / 2,
+            noseY + noseH - (noseH * 0.3) / 2,
+            noseW * 0.28,
+            noseH * 0.15,
+            0,
+            0,
+            Math.PI * 2
+          )
+          ctx.fillStyle = 'rgba(229, 139, 196, 0.9)'
           ctx.fill()
         }
       }
-      ctx.restore()
 
       ctx.restore()
       animFrame = requestAnimationFrame(renderLoop)
     }
 
     animFrame = requestAnimationFrame(renderLoop)
-    return () => cancelAnimationFrame(animFrame)
+    return () => {
+      window.removeEventListener('resize', handleResize)
+      cancelAnimationFrame(animFrame)
+    }
   }, [])
 
-  // Touch and Mouse tracking pulls Trey's gaze
-  const handleTouch = (e: React.TouchEvent<HTMLCanvasElement>) => {
-    if (!interactive) return
-    const touch = e.touches[0]
-    if (!touch || !canvasRef.current) return
-    const rect = canvasRef.current.getBoundingClientRect()
-    const x = ((touch.clientX - rect.left) / rect.width) * 2 - 1
-    const y = ((touch.clientY - rect.top) / rect.height) * 2 - 1
-    animState.current.touchGaze = { x, y }
-  }
-
-  const handleTouchEnd = () => {
-    animState.current.touchGaze = null
-  }
-
   return (
-    <div
+    <canvas
+      ref={canvasRef}
       className={className}
       style={{
         width: '100%',
         height: '100%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        position: 'relative',
+        display: 'block',
+        touchAction: 'none',
         ...style
       }}
-      onClick={onClick}
-    >
-      <canvas
-        ref={canvasRef}
-        width={844}
-        height={mode === 'rising-sun' ? 390 : 560}
-        onTouchMove={handleTouch}
-        onTouchStart={handleTouch}
-        onTouchEnd={handleTouchEnd}
-        style={{
-          width: '100%',
-          height: '100%',
-          objectFit: 'contain',
-          display: 'block'
-        }}
-      />
-    </div>
+    />
   )
 }
