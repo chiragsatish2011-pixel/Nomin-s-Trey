@@ -56,9 +56,13 @@
 - [x] **Step 7: Verification & Parity Report**
   - Extracted 12 frame-by-frame before/after comparison screenshots.
   - Authored comprehensive quantitative report in `docs/parity-report.md`.
-- [x] **Step 8: Autonomous PC Takeover: YouTube & Chrome Navigation**
-  - Execute automated PC takeover sequence for task "open chrome and open youtube and search technoblade".
-  - Verify real-time screen capture, pointer travel, click ripple, keyboard typing, and visual verification.
+- [x] **Step 8: Autonomous PC Takeover: Chrome, YouTube & Technoblade**
+  - [x] Authored 60 FPS scenario recorder: `scripts/record-trey-technoblade.mjs`.
+  - [x] Recorded full 18.0s video: `reference/recordings/trey-technoblade.mp4`.
+  - [x] Exported mobile animated GIF replays: `trey-technoblade.gif`, `trey-technoblade-search.gif`, `trey-technoblade-chrome.gif`.
+  - [x] Extracted 6 key frame screenshots (`technoblade_01_task_speech.jpg` through `06_channel_results_card.jpg`).
+  - [x] Built interactive self-contained player: `technoblade_player.html`.
+  - [x] Verified autonomous 7-step AgentLoop flow in `packages/core/test/pcTakeover.test.ts`.
 
 ---
 
@@ -73,7 +77,6 @@
 | 2026-11-07 09:10 | Dual TCP/WebSocket Server on Port 59124 | Eliminates dependency on unstable native socket plugins in WebView while maintaining full HMAC + AES-GCM security. |
 | 2026-11-07 09:12 | Offline Pentatonic Web Audio Chirps | Uses procedural audio synthesis for cartoon sounds, requiring zero disk assets. |
 | 2026-11-07 09:40 | Root-level `ext` properties in `build.gradle` | Exposes `compileSdkVersion` and `minSdkVersion` to `cordova.variables.gradle` to allow standalone APK compilation in CI. |
-| 2026-11-07 09:45 | Zero-Glow Mandate | The reference explicitly removes all glows ("all glows are gone"); prior heavy box-shadow glows are replaced with crisp Apple-style borders and subtle diffuse elevation shadows. |
-| 2026-11-07 09:45 | Font System | Apple SF Pro / SF Symbols cannot be legally bundled on Windows; we use `Inter`, `"Segoe UI Variable"`, and `-apple-system` with Lucide MIT vector icons. |
-| 2026-11-07 09:45 | Procedural Chimes | Web Audio procedural pentatonic chime (`chirp.ts`) directly ports `LiveVoice.swift:576-618` ($C_5 \dots E_6$, 25ms upward scoop, 18Hz vibrato on last syllable). |
-| 2026-11-07 09:45 | Top-Right Research Panel | Positioned top-right (`x: width - 24, y: 24`), 400x190 collapsed, 520x420 expanded, continuous 22px rounded rectangle, 26px circular action buttons. |
+| 2026-11-07 09:45 | Zero-Glow Mandate | All glows removed in favor of hairline borders and subtle elevation shadows. |
+| 2026-11-07 09:45 | Font System | Replaced Apple fonts with `Inter`, `"Segoe UI Variable"`, and Lucide vector icons. |
+| 2026-11-07 10:05 | 60 FPS Capture for Technoblade Takeover | Frame-by-frame Electron capture guarantees zero dropped frames during browser launch, omnibox navigation, and search typing. |
