@@ -31,7 +31,7 @@
 - [x] **Phase 4: Comprehensive Verification & Testing**
   - [x] Unit tests: Protocol Zod schemas, crypto round-trip, replay rejection, expiry (14 tests pass)
   - [x] Integration tests: Desktop server & mock mobile client over loopback (`companionIntegration.test.ts`)
-  - [x] Run full workspace typecheck, lint, and test suite (81/81 tests pass across 16 suites; 0 lint errors; 0 typecheck errors)
+  - [x] Run full workspace typecheck, lint, and test suite (82/82 tests pass across 16 suites; 0 lint errors; 0 typecheck errors)
   - [x] Real-device QA manual test checklist (`docs/qa-manual-checklist.md`)
 - [x] **Phase 5: Release, Workflows & Documentation**
   - [x] GitHub Actions CI workflows for Windows installer & Android APK (`.github/workflows/ci.yml`, `release.yml`)
